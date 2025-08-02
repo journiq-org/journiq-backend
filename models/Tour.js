@@ -5,11 +5,11 @@ const tourSchema = new mongoose.Schema({
         type:String,
         required:true
     },
-    destination:{
-        type:string,
+    description:{
+        type: String,
         required:true
     },
-    description:{
+    destination:{
         type:mongoose.Schema.Types.ObjectId,
         ref:"Destination",
         required:true
@@ -28,7 +28,7 @@ const tourSchema = new mongoose.Schema({
         required: true
     },
     highlights:{
-        type:[string],
+        type:[String],
         default:[]
     },
     price:{
@@ -48,11 +48,11 @@ const tourSchema = new mongoose.Schema({
         }
     ],
     images:{
-        type:[string],
+        type:[String],
         default:[]
     },
     included:{
-        type:[string],
+        type:[String],
         default: []
     },
      excluded: {

@@ -1,13 +1,12 @@
-import User from "../models/user.js"
+import User from "../models/User.js"
 import HttpError from "./httpError.js"
 import jwt from 'jsonwebtoken'
 
-const userAuthCheck = async (req,next) =>{
+const userAuthCheck = async (req, res, next) => {
+
     if(req.method === 'OPTIONS'){
         return next()
     }
-
-
     try{
         const token = req.headers.authorization.split(" ")[1]
 
