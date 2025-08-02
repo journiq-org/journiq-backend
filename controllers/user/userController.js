@@ -4,6 +4,9 @@ import { validationResult } from 'express-validator';
 import HttpError from '../../middlewares/httpError.js'; 
 import User from '../../models/User.js';
 
+
+//Register
+
 export const registerUser = async (req, res, next) => {
   try {
     const errors = validationResult(req);
@@ -42,7 +45,7 @@ export const registerUser = async (req, res, next) => {
       phone,
       bio,
       location,
-      isVerified: false // Optional: default will take care of it
+      isVerified: false 
     });
 
     // Generate token
@@ -73,5 +76,59 @@ export const registerUser = async (req, res, next) => {
   } catch (error) {
     console.error("Register Error:", error.message || error);
     return next(new HttpError("Registration Failed", 500));
+  }
+};
+
+
+// Login
+
+export const userLogin = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+      return next(new HttpError("Invalid input: " + errors.array()[0].msg, 422));
+    }
+
+    const { email, password } = req.body;
+
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return next(new HttpError("Invalid credentials", 401));
+    }
+
+    const isValidPassword = await bcrypt.compare(password, user.password);
+
+    if (!isValidPassword) {
+      return next(new HttpError("Invalid password", 401));
+    }
+
+    const token = jwt.sign(
+      { id: user._id, role: user.role },
+      process.env.JWT_SECRET_KEY,
+      { expiresIn: process.env.JWT_TOKEN_EXPIRY }
+    );
+
+    res.status(200).json({
+      status: true,
+      message: "Login successful",
+      access_token: token,
+      data: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        profilePic: user.profilePic,
+        phone: user.phone,
+        bio: user.bio,
+        location: user.location,
+        isVerified: user.isVerified,
+      },
+    });
+
+  } catch (error) {
+    console.error("Login Error:", error);
+    return next(new HttpError("Login failed", 500));
   }
 };
