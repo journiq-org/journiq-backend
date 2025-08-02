@@ -1,7 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
-import connectDB from './db/connectDB.js'
+import connectDB from './config/db.js'
 
 
 
@@ -20,7 +20,7 @@ app.use(express.json())                             //parse incoming JSON
 app.use(cors())
 
 //routes
-app.use('/api/users', userRoute)
+// app.use('/api/users', userRoute)
 
 
 //global error handling
@@ -31,4 +31,4 @@ app.use((error,req, res,next) => {
 });
 
 //start server
-app.listen(PORT,() => console.log(`Server running on http:localhost:${PORT}`))
+app.listen(PORT,() => console.log(`Server running on http://localhost:${PORT}`))
