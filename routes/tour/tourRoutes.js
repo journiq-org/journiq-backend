@@ -1,6 +1,6 @@
 import { Router } from "express";
 import userAuthCheck from "../../middlewares/userAuthCheck.js";
-import { createTour, getAllTour, viewTour } from "../../controllers/tour/tourController.js";
+import { createTour, deleteTour, getAllTour, updateTour, viewTour } from "../../controllers/tour/tourController.js";
 import upload from "../../middlewares/fileUpload.js";
 import { check } from "express-validator";
 
@@ -96,37 +96,38 @@ tourRoute.post('/createtour',upload.array('images',3),
 
 tourRoute.get('/viewAll',getAllTour)
 tourRoute.get('/viewtour/:id', viewTour)
-// tourRoute.patch('/update/:id',upload.array('images',3),
-// [
-//   check("title").optional().isString().withMessage("Title must be a string"),
-//   check("description").optional().isString().withMessage("Description must be a string"),
-//   check("itinerary").optional().isString().withMessage("Itinerary must be a string"),
-//   check("duration")
-//     .optional()
-//     .isInt({ min: 1 })
-//     .withMessage("Duration must be a positive integer"),
-//   check("highlights").optional().isArray().withMessage("Highlights must be an array"),
-//   check("price")
-//     .optional()
-//     .isFloat({ min: 0 })
-//     .withMessage("Price must be a non-negative number"),
-//   check("availability").optional().isArray().withMessage("Availability must be an array"),
-//   check("included").optional().isArray().withMessage("Included must be an array"),
-//   check("excluded").optional().isArray().withMessage("Excluded must be an array"),
-//   check("meetingPoint").optional().isString().withMessage("Meeting point must be a string"),
-//   check("category")
-//     .optional()
-//     .isIn(["adventure", "cultural", "nature", "wildlife", "other"]) // adjust enum as per your model
-//     .withMessage("Invalid category"),
-//   check("rating")
-//     .optional()
-//     .isFloat({ min: 0, max: 5 })
-//     .withMessage("Rating must be between 0 and 5"),
-//   check("destination")
-//     .optional()
-//     .isMongoId()
-//     .withMessage("Destination must be a valid ID")
+tourRoute.patch('/update/:id',upload.array('images',3),
+[
+  check("title").optional().isString().withMessage("Title must be a string"),
+  check("description").optional().isString().withMessage("Description must be a string"),
+  check("itinerary").optional().isString().withMessage("Itinerary must be a string"),
+  check("duration")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("Duration must be a positive integer"),
+  check("highlights").optional().isArray().withMessage("Highlights must be an array"),
+  check("price")
+    .optional()
+    .isFloat({ min: 0 })
+    .withMessage("Price must be a non-negative number"),
+  check("availability").optional().isArray().withMessage("Availability must be an array"),
+  check("included").optional().isArray().withMessage("Included must be an array"),
+  check("excluded").optional().isArray().withMessage("Excluded must be an array"),
+  check("meetingPoint").optional().isString().withMessage("Meeting point must be a string"),
+  check("category")
+    .optional()
+    .isIn(["adventure", "cultural", "nature", "wildlife", "other"]) // adjust enum as per your model
+    .withMessage("Invalid category"),
+  check("rating")
+    .optional()
+    .isFloat({ min: 0, max: 5 })
+    .withMessage("Rating must be between 0 and 5"),
+  check("destination")
+    .optional()
+    .isMongoId()
+    .withMessage("Destination must be a valid ID")
 
-// ],updateTour)
+],updateTour)
+tourRoute.patch('/deleteTour/:id',deleteTour)
 
 export default tourRoute
