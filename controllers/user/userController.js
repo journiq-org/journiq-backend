@@ -129,7 +129,7 @@ export const userLogin = async (req, res, next) => {
   }
 };
 
-// View User Profile
+//  User Profile
 export const getUserProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user_data.user_id).select('-password');
