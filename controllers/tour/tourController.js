@@ -128,9 +128,9 @@ export const updateTour = async (req,res,next) => {
                 //     update.images = imagePath
                 // }
 
-                if (imagePath.length > 0) {
-                    update.images = imagePath;
-                }   
+                const imagePath = req.files && req.files.length > 0 
+                ? req.files.map(file => file.path) 
+                : []   
 
                 const updatedTour = await Tour.findOneAndUpdate(
                     {_id:id, is_deleted:false,guide:guideId},
@@ -155,7 +155,6 @@ export const updateTour = async (req,res,next) => {
         return next(new HttpError('Oops! Something went wrong',500))
     }
 }
-
 
 
 //delete tour
@@ -195,11 +194,6 @@ export const deleteTour = async (req,res,next) => {
 }
 
 
-
-
-
-
-
 //view all tour
 
 export const getAllTour = async (req, res,next) => {
@@ -229,6 +223,7 @@ export const getAllTour = async (req, res,next) => {
         return next(new HttpError('Oops! Something went wrong',500))
     }
 }
+
 
 //get single tour
 
