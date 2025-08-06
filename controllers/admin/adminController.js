@@ -91,30 +91,29 @@ export const toggleBlockUser = async (req,res,next) => {
 }
 
 //get blocked users
-// export const getBlockedUsers = async (req,res,next) => {
-//             console.log('🔍 Reached getBlockedUsers');
-//     try{
+export const getBlockedUsers = async (req,res,next) => {
+    try{
         
-//         const {user_role:tokenRole}= req.user_data
+        const {user_role:tokenRole}= req.user_data
 
-//         if(tokenRole !== 'admin'){
-//             return next( new HttpError('You are not authorized to perform this action ',403))
-//         }else{
-//             const users = await User.find({isBlocked: true}).select('-password')
+        if(tokenRole !== 'admin'){
+            return next( new HttpError('You are not authorized to perform this action ',403))
+        }else{
+            const users = await User.find({isBlocked: true}).select('-password')
 
-//             if(!users || users.length === 0){
-//                 return next(new HttpError('No blocked users found',404))
-//             }else{
-//                 res.status(200).json({
-//                     status:true,
-//                     message:null,
-//                     data: users
-//                 })
-//             }
-//         }
+            if(!users || users.length === 0){
+                return next(new HttpError('No blocked users found',404))
+            }else{
+                res.status(200).json({
+                    status:true,
+                    message:null,
+                    data: users
+                })
+            }
+        }
 
-//     }catch(err){
-//         console.error('view blocked user error', err.message, err.stack)
-//         return next(new HttpError('Oops! Something went wrong',500))
-//     }
-// }
+    }catch(err){
+        console.error('view blocked user error', err.message, err.stack)
+        return next(new HttpError('Oops! Something went wrong',500))
+    }
+}
