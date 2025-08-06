@@ -5,6 +5,7 @@ import connectDB from './config/db.js'
 import userRoute from './routes/user/userRoute.js'
 import tourRoute from './routes/tour/tourRoutes.js'
 import destinationRoute from './routes/destination/destinationRoutes.js'
+import bookingRoute from './routes/booking/bookingRoute.js'
 
 
 dotenv.config()
@@ -20,7 +21,7 @@ app.use(cors())
 app.use('/api/users', userRoute)
 app.use('/api/tour',tourRoute)
 app.use('/api/destination',destinationRoute)
-
+app.use('/api/booking',bookingRoute)
 
 // app.use((error, req, res, next) => {
 //   res.status(error.code || 500).json({

@@ -1,21 +1,21 @@
-// routes/userRoutes.js
-import express from 'express';
+import express, { Router } from 'express';
 import { check } from 'express-validator';
 import { changePassword, deleteUser, editUserProfile, getUserProfile, registerUser, userLogin } from '../../controllers/user/userController.js';
 import userAuthCheck from '../../middlewares/userAuthCheck.js';
+import upload from '../../middlewares/fileUpload.js';
 
-const router = express.Router();
+const userRoute = Router();
 
 // POST route for registration
-router.post('/register',[
+userRoute.post('/register',upload.single('profilePic'),[
   check('name')
-    .isEmail()
+    .notEmpty()
     .withMessage('name is required'),
   check('email')
     .isEmail()
     .withMessage('email is required'),
   check('password')
-    .isLength({ min: 8 })
+    .isLength({ min:4 })
     .withMessage('password is required'),
   check('phone')
     .optional()
@@ -32,8 +32,7 @@ router.post('/register',[
   ],registerUser);
 
 // POST route for login with validations
-router.post(
-  '/login',[
+userRoute.post('/login',[
     check('email')
       .isEmail()
       .withMessage('Email must be valid'),
@@ -42,16 +41,19 @@ router.post(
       .withMessage('Password is required'),
   ],userLogin);
 
+
+userRoute.use(userAuthCheck)
+
 // GET route for user profile
-router.get('/view-profile', userAuthCheck, getUserProfile);
+userRoute.get('/view-profile', getUserProfile);
 
 // PATCH route for editing user profile
-router.patch('/edit-profile',userAuthCheck, editUserProfile)
+userRoute.patch('/edit-profile',upload.single('profilePic'), editUserProfile)
 
 // DELETE route for deleting user account
-router.delete('/deleteUser', userAuthCheck, deleteUser );
+userRoute.delete('/deleteUser', deleteUser );
 
 // PATCH route for changing password
-router.patch('/ChangePassword' , userAuthCheck , changePassword )
+userRoute.patch('/ChangePassword' , changePassword )
 
-export default router;
+export default userRoute;
