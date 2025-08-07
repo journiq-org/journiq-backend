@@ -7,6 +7,7 @@ import tourRoute from './routes/tour/tourRoutes.js'
 import destinationRoute from './routes/destination/destinationRoutes.js'
 import adminRoute from './routes/admin/adminRoutes.js'
 import bookingRoute from './routes/booking/bookingRoute.js'
+import reviewRoute from './routes/review/reviewRoute.js'
 
 
 dotenv.config()
@@ -25,6 +26,7 @@ app.use('/api/destination',destinationRoute)
 app.use('/api/admin',adminRoute)
 
 app.use('/api/booking',bookingRoute)
+app.use('/api/review', reviewRoute)
 
 // app.use((error, req, res, next) => {
 //   res.status(error.code || 500).json({

@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const reviewSchema = new mongoose.Schema({
   tour: {
@@ -22,8 +22,14 @@ const reviewSchema = new mongoose.Schema({
     trim: true,
     maxlength: 1000,
   },
+  isDeleted: {
+    type: Boolean,
+    default: false,
+  },
 }, {
-  timestamps: true,
+  timestamps: true, 
 });
 
-module.exports = mongoose.model('Review', reviewSchema);
+const Review = mongoose.model('Review', reviewSchema);
+
+export default Review;
