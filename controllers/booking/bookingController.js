@@ -76,35 +76,32 @@ export const getBookings = async (req, res, next) => {
 // Update Booking Status
 export const updateBookingStatus = async (req, res, next) => {
   try {
-    const { user_role: tokenRole } = req.user_data;
-    const { id:bookingId } = req.params;
+    const { user_role } = req.user_data;
+    const { id } = req.params;
     const { status } = req.body;
 
-    // Only admin or guide allowed to update status
-    if (tokenRole !== "guide") {
+    // Only guide or admin can update
+    if (!["guide", "admin"].includes(user_role)) {
       return next(new HttpError("Unauthorized access", 403));
     }
 
-    // Allowed statuses
-    const validStatuses = ["confirmed", "cancelled", "completed", "pending"];
+    // Valid statuses guide/admin can set
+    const validStatuses = ["confirmed", "completed", "cancelled", "pending"];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: "Invalid status provided" });
     }
 
-    // Update booking status
-    const updatedBooking = await Booking.findByIdAndUpdate(
-      bookingId,
+    const booking = await Booking.findByIdAndUpdate(
+      id,
       { status },
       { new: true }
     ).populate("tour");
 
-    if (!updatedBooking) {
-      return res.status(404).json({ message: "Booking not found" });
-    }
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
 
     res.status(200).json({
-      message: "Booking status updated successfully",
-      booking: updatedBooking,
+      message: "Booking status updated",
+      booking,
     });
   } catch (error) {
     next(error);
@@ -221,7 +218,9 @@ export const deleteBooking = async (req, res, next) => {
       return next(new HttpError("Unauthorized to delete this booking", 403));
     }
 
-    await Booking.findByIdAndDelete(bookingId);
+    booking.isDeleted = true;
+      await booking.save();
+
 
     res.status(200).json({
       message: "Booking deleted successfully",
@@ -234,23 +233,27 @@ export const deleteBooking = async (req, res, next) => {
 // Check the Availability
 export const checkAvailability = async (req, res, next) => {
   try {
-    const { date, guideId } = req.query;
+    const { date, tourId } = req.query;
 
-    if (!date || !guideId) {
-      return next(new HttpError("Date and Guide ID are required", 400));
+    if (!date || !tourId) {
+      return next(new HttpError("Date and Tour ID are required", 400));
     }
 
-    const existingBooking = await Booking.findOne({
-      guide: guideId,
-      date: new Date(date),
+    const tour = await Tour.findById(tourId);
+    if (!tour) return next(new HttpError("Tour not found", 404));
+
+    const bookingDate = new Date(date).toISOString().split("T")[0];
+    const availability = tour.availability.find((a) => {
+      return new Date(a.date).toISOString().split("T")[0] === bookingDate;
     });
 
-    if (existingBooking) {
+    if (!availability || availability.slots <= 0) {
       return res.status(200).json({ available: false });
     }
 
-    res.status(200).json({ available: true });
+    res.status(200).json({ available: true, slots: availability.slots });
   } catch (error) {
     next(error);
   }
 };
+

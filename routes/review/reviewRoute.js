@@ -1,13 +1,26 @@
 import express from 'express';
-import { addReview, getReviewsForTour } from '../../controllers/review/reviewController.js';
+import { addReview, deleteReview, getReviewsByRole, getReviewsForTour, updateReview } from '../../controllers/review/reviewController.js';
 import userAuthCheck from '../../middlewares/userAuthCheck.js';
 
 const reviewRoute = express.Router();
+
 reviewRoute.use(userAuthCheck)
 
-// POST /api/reviews - Add a new review (only for authenticated users)
-reviewRoute.post('/', addReview);
-reviewRoute.get('/tour/:tourId', getReviewsForTour);
+// Add a User Review
+reviewRoute.post('/add', addReview),
+
+// Get review for tour 
+reviewRoute.get('/tour/:tourId', getReviewsForTour),
+
+// Delete review by Id
+reviewRoute.delete('/delete/:id', deleteReview),
+
+// Update review by Id
+reviewRoute.patch('/update/:id', updateReview),
+
+// Get all review 
+reviewRoute.get('/get-all-review', getReviewsByRole)
+
 
 
 export default reviewRoute;

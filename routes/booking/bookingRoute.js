@@ -6,13 +6,26 @@ const bookingRoute = Router();
 
 bookingRoute.use(userAuthCheck)
 
-bookingRoute.post('/create-booking', createBooking);
-bookingRoute.get('/my-booking', getBookings );
-bookingRoute.patch('/status/:id', updateBookingStatus);
-bookingRoute.patch('/cancel/:bookingId', cancelBookingByUser);
-bookingRoute.put('/respond/:bookingId', respondToBookingByGuide);
-bookingRoute.patch('/delete/:bookingId' , deleteBooking),
-bookingRoute.get('/checkAvailability', checkAvailability)
+// create a new booking
+bookingRoute.post('/create-booking', createBooking); 
+
+// get all bookings of the user
+bookingRoute.get('/my-booking', getBookings); 
+
+// User confirms or changes status
+bookingRoute.patch('/user/update-status/:id', updateBookingStatus); 
+
+// User cancels booking
+bookingRoute.patch('/cancel/:bookingId', cancelBookingByUser); 
+
+ // Guide responds to booking
+bookingRoute.put('/guide/update-status/:id', respondToBookingByGuide);
+
+// Admin deletes booking
+bookingRoute.patch('/admin/delete-booking/:bookingId', deleteBooking); 
+
+//  checks availability 
+bookingRoute.get('/checkAvailability', checkAvailability); 
 
 
 
