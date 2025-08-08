@@ -90,9 +90,13 @@ const tourSchema = new mongoose.Schema({
       type: Boolean,
       default: false,
     },
-    isActive: {
+    isActive: {   //guide control
       type: Boolean,
       default: true,
+    },
+    isBlocked: {    //admin control
+        type: Boolean,
+        default: false
     }
    
 },{

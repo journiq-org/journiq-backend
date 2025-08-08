@@ -7,6 +7,7 @@ import tourRoute from './routes/tour/tourRoutes.js'
 import destinationRoute from './routes/destination/destinationRoutes.js'
 import adminRoute from './routes/admin/adminRoutes.js'
 import bookingRoute from './routes/booking/bookingRoute.js'
+import guideRoute from './routes/guide/guideRoutes.js'
 import reviewRoute from './routes/review/reviewRoute.js'
 
 
@@ -24,7 +25,7 @@ app.use('/api/users', userRoute)
 app.use('/api/tour',tourRoute)
 app.use('/api/destination',destinationRoute)
 app.use('/api/admin',adminRoute)
-
+app.use('/api/guide',guideRoute)
 app.use('/api/booking',bookingRoute)
 app.use('/api/review', reviewRoute)
 
