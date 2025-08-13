@@ -40,6 +40,10 @@ const destinationSchema = mongoose.Schema({
       type: Boolean,
       default: false,
     },
+    is_active:{
+      type:Boolean,
+      default:true
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Admin", // or "Guide" if guides create destinations

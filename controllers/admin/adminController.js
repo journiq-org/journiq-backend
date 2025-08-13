@@ -1,7 +1,10 @@
+import transporter from '../../config/email.js'
 import HttpError from '../../middlewares/httpError.js'
 import Booking from '../../models/Booking.js'
+import Review from '../../models/Review.js'
 import Tour from '../../models/Tour.js'
 import User from '../../models/User.js'
+import Notification from '../../models/Notification.js'
 
 
 //USER MANAGEMENT
@@ -59,7 +62,7 @@ export const getUserById = async (req,res,next) => {
     }
 }
 
-//toggle block user
+//toggle block user- (email notification)
 export const toggleBlockUser = async (req,res,next) => {
     try{
         const id = req.params.id
@@ -77,6 +80,27 @@ export const toggleBlockUser = async (req,res,next) => {
 
                 user.isBlocked = !user.isBlocked
                 await user.save()
+
+                // 📩 Send email to the user about block/unblock status
+                    const mailOptions = {
+                    from: process.env.EMAIL_USER,
+                    to: user.email,
+                    subject: `Your Journiq Account Has Been ${user.isBlocked ? 'Blocked' : 'Unblocked'}`,
+                    template: 'userBlockStatus', // The .hbs file name without extension
+                    context: {
+                        name: user.name,
+                        isBlocked: user.isBlocked,
+                        year: new Date().getFullYear(),
+                    },
+                    };
+
+                    transporter.sendMail(mailOptions, (error, info) => {
+                    if (error) {
+                        console.error(`Failed to send user block/unblock notification:`, error);
+                    } else {
+                        console.log(`User notified: ${info.response}`);
+                    }
+                    });
 
                 res.status(200).json({
                     status:true,
@@ -139,6 +163,27 @@ export const deleteUser = async (req,res,next) => {
             if(!deleteUser){
                 return next(new HttpError('User not found',404))
             }else{
+
+                // 📩 Send email to deleted user
+                const mailOptions = {
+                    from: process.env.EMAIL_USER,
+                    to: deletedUser.email,
+                    subject: "Your Journiq Account Has Been Deleted",
+                    template: "userDeletedNotification", // matches the filename userDeletedNotification.hbs
+                    context: {
+                        name: deletedUser.name,
+                    },
+                };
+
+                transporter.sendMail(mailOptions, (error, info) => {
+                    if (error) {
+                        console.error(`Failed to send account deletion email:`, error);
+                    } else {
+                        console.log(`Deletion email sent to ${deletedUser.email}: ${info.response}`);
+                    }
+                });
+
+
                 res.status(200).json({
                     status:true,
                     message:'User deleted successfully',
@@ -203,6 +248,35 @@ export const verifyGuide = async (req,res,next) => {
             if(!guide){
                 return next(new HttpError('Guide not found',404))
             }else{
+
+                //  Create in-app notification
+                    await Notification.create({
+                        recipient: guide._id,
+                        type: "guide_verified",
+                        message: "Your guide account has been verified by the admin.",
+                        isRead: false,
+                    });
+
+                    //  Send email notification
+                    const mailOptions = {
+                        from: process.env.EMAIL_USER,
+                        to: guide.email,
+                        subject: "Congratulations! Your Guide Account is Verified",
+                        template: "guideVerifiedNotification", // template file name
+                        context: {
+                            name: guide.name,
+                        },
+                    };
+
+                    transporter.sendMail(mailOptions, (error, info) => {
+                        if (error) {
+                            console.error(`Failed to send verification email:`, error);
+                        } else {
+                            console.log(`Verification email sent to ${guide.email}: ${info.response}`);
+                        }
+                    });
+
+
                 res.status(200).json({
                     status:true,
                     message:'Guide verified successfully',
@@ -217,6 +291,7 @@ export const verifyGuide = async (req,res,next) => {
         }
 
     }catch(err){
+        console.log('verify guide error', err)
         return next(new HttpError('Oops! Something went wrong',500))
     }
 }
@@ -235,7 +310,7 @@ export const revokeGuide = async (req,res,next) => {
                 {_id:id, role:'guide',isDeleted:false, isVerified:true},
                 {isVerified:false},
                 {new:true}
-            )
+            ).select('-password')
 
             if(!guide){
                 return next(new HttpError('Guide not found or already unverified', 404))
@@ -411,6 +486,41 @@ export const getSingleBooking = async (req,res,next) => {
             }
         }
         
+    }catch(err){
+        return next(new HttpError('Oops! Something went wrong',500))
+    }
+}
+
+
+// REVIEW MODERATION
+
+//delete review
+export const adminDeleteReview = async (req,res,next) => {
+    try{
+        const {id} = req.params
+
+        const { user_id: adminId, user_role: tokenRole} = req.user_data
+
+        if(tokenRole !== 'admin'){
+            return next(new HttpError('You are not authorized to perform this action',403))
+        }else{
+
+            const deletedReview = await Review.findOneAndUpdate(
+                {_id:id,isDeleted:false},
+                {isDeleted:true},
+                {new:true}
+            )
+
+            if(!deletedReview){
+                return next(new HttpError('Review is already deleted or not found',404))
+            }else{
+                res.status(200).json({
+                    status: true,
+                    message: "Review deleted successfully",
+                    data: null,
+                })
+            }
+        }
     }catch(err){
         return next(new HttpError('Oops! Something went wrong',500))
     }

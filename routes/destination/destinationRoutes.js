@@ -1,7 +1,7 @@
 import { Router } from "express";
 import userAuthCheck from "../../middlewares/userAuthCheck.js";
 import upload from "../../middlewares/fileUpload.js";
-import { createDestination, deleteDestination, getAlldestinations, getDestinationById, updateDestination } from "../../controllers/destination/destinationController.js";
+import { createDestination, deleteDestination, getAlldestinations, getDestinationById, getPopularDestinations, getToursByDestination, toggleDestinationStatus, updateDestination } from "../../controllers/destination/destinationController.js";
 import { check ,body } from "express-validator";
 
 const destinationRoute = Router()
@@ -99,7 +99,10 @@ destinationRoute.patch('/updateDestination/:id',upload.array('images',3),
     .withMessage("Longitude must be between -180 and 180"),
 ],updateDestination)
 
+destinationRoute.get('/PopularDestination',getPopularDestinations)
 destinationRoute.patch('/deleteDestination/:id',deleteDestination)
+destinationRoute.get('/:id/tours',getToursByDestination)
+destinationRoute.patch('/:id/toggle-status', toggleDestinationStatus)
 
 
 export default destinationRoute

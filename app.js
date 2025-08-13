@@ -9,9 +9,11 @@ import adminRoute from './routes/admin/adminRoutes.js'
 import bookingRoute from './routes/booking/bookingRoute.js'
 import guideRoute from './routes/guide/guideRoutes.js'
 import reviewRoute from './routes/review/reviewRoute.js'
+import notificationRoute from './routes/notification/notificationRoutes.js'
 
 
 dotenv.config()
+
 
 const PORT = process.env.PORT || 5000
 const app = express()
@@ -28,6 +30,7 @@ app.use('/api/admin',adminRoute)
 app.use('/api/guide',guideRoute)
 app.use('/api/booking',bookingRoute)
 app.use('/api/review', reviewRoute)
+app.use('/api/notification',notificationRoute)
 
 // app.use((error, req, res, next) => {
 //   res.status(error.code || 500).json({

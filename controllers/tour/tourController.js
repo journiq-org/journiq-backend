@@ -3,6 +3,10 @@ import HttpError from "../../middlewares/httpError.js"
 import Tour from "../../models/Tour.js"
 import User from "../../models/User.js"
 import mongoose from "mongoose"
+import Destination from "../../models/Destination.js"
+// import { sendNotification } from "../../services/notificationService.js"
+import transporter from "../../config/email.js"
+// import { sendNotification } from "../../services/notificationService.js"
 
 
 //create tour
@@ -29,7 +33,7 @@ export const createTour = async (req,res,next) => {
                 destination
             } = req.body
 
-            const imagePath = req.file?.path
+            const imagePaths = req.files ? req.files.map(file => file.path) : []
 
             const{user_id:guideId, user_role:tokenRole} = req.user_data
 
@@ -37,32 +41,115 @@ export const createTour = async (req,res,next) => {
                 return next(new HttpError("You are not authorized to create a tour",403))
             }
             else{
-                const newTour = await new Tour({
-                    title:title,
-                    description:description,
-                    itinerary:itinerary,
-                    duration:duration,
-                    highlights:highlights,
-                    price:price,
-                    availability:availability,
-                    included:included,
-                    excluded:excluded,
-                    meetingPoint:meetingPoint,
-                    category:category,
-                    rating:rating,
-                    destination:destination,
-                    images:imagePath ? [imagePath] : [],
-                    guide:guideId
-                }).save()
-
-                if(!newTour){
-                    return next(new HttpError("Failed to create tour",400))
+                const guide = await User.findById(guideId);
+                if(!guide || !guide.isVerified){
+                     return next(new HttpError("Your guide profile is not verified yet", 403))
                 }else{
-                    res.status(201).json({
-                        status:true,
-                        message:"Tour created successfully",
-                        data:newTour
-                    })
+
+                    const newTour = await new Tour({
+                        title:title,
+                        description:description,
+                        itinerary:itinerary,
+                        duration:duration,
+                        highlights:highlights,
+                        price:price,
+                        availability:availability,
+                        included:included,
+                        excluded:excluded,
+                        meetingPoint:meetingPoint,
+                        category:category,
+                        rating:rating,
+                        destination:destination,
+                        images:imagePaths,
+                        guide:guideId
+                    }).save()
+    
+                    if(!newTour){
+                        return next(new HttpError("Failed to create tour",400))
+                    }else{
+
+                        // Populate destination name before sending email
+                        const populatedTour = await newTour.populate("destination", "name");
+
+                        // 📩 Send email to Admin
+                        const admin = await User.findOne({ role: "admin" }).select("email name");
+                        if (admin) {
+                        const mailOptions = {
+                            from: process.env.EMAIL_USER,
+                            to: admin.email,
+                            subject: `New Tour Added on Journiq: ${title}`,
+                            template: "newTourAlert",
+                            context: {
+                            name: admin.name,
+                            guideName: guide.name,
+                            title,
+                            destination: populatedTour.destination.name,
+                            category,
+                            price,
+                            link: `https://yourfrontend.com/tour/${newTour._id}`,
+                            },
+                        };
+
+                        transporter.sendMail(mailOptions, (error, info) => {
+                            if (error) {
+                            console.error(`Failed to send admin notification:`, error);
+                            } else {
+                            console.log(`Admin notified: ${info.response}`);
+                            }
+                        });
+                        }
+                        //  // 🔔 Notify admin about new tour
+                        // const adminUser = await User.findOne({ role: "admin" });
+                        // if (adminUser) {
+                        // await sendNotification({
+                        //     recipientId: adminUser._id,
+                        //     senderId: guideId,
+                        //     type: "tour_updated",
+                        //     message: `A new tour "${title}" has been created by guide ${guide.name}.`,
+                        //     link: `https://yourapp.com/tours/${newTour._id}`,
+                        //     relatedTour: newTour._id,
+                        //     emailData: {
+                        //     to: adminUser.email,
+                        //     subject: "New Tour Created - Journiq",
+                        //     template: "newTourNotification", // your handlebars template name
+                        //     context: {
+                        //         name: adminUser.name,
+                        //         tourTitle: title,
+                        //         guideName: guide.name,
+                        //         link: `https://yourapp.com/tours/${newTour._id}`
+                        //     }
+                        //     }
+                        // });
+                        // }
+
+                        
+                        // const adminUser = await User.findOne({ role: "admin" });
+                        // if (adminUser) {
+                        // // 📩 Send notification to admin about new tour
+                        // await sendNotification({
+                        //     recipientId: adminUser._id,
+                        //     senderId: guideId,
+                        //     type: "tour_updated",
+                        //     message: `A new tour "${title}" has been created by a guide.`,
+                        //     link: `https://yourapp.com/tours/${newTour._id}`,
+                        //     relatedTour: newTour._id,
+                        //     emailData: {
+                        //         to: adminUser.email,
+                        //         subject: "New Tour Created - Journiq",
+                        //         recipientName: adminUser.name,
+                        //         message: `A new tour "${title}" has been created. Click below to review it.`,
+                        //         link: `https://yourapp.com/tours/${newTour._id}`
+                        //     }
+                        // });
+            // }
+    
+    
+                        res.status(201).json({
+                            status:true,
+                            message:"Tour created successfully",
+                            data:newTour
+                        })
+                    }
                 }
             }
         }
@@ -108,49 +195,57 @@ export const updateTour = async (req,res,next) => {
                 return next(new HttpError('You are not authorized to update this tour',403))
             } 
             else{
-                const update = {
-                    title : title,
-                    description : description,
-                    itinerary : itinerary,
-                    duration : duration,
-                    highlights : highlights,
-                    price : price,
-                    availability : availability,
-                    included : included,
-                    excluded : excluded,
-                    meetingPoint : meetingPoint,
-                    category : category,
-                    rating : rating,
-                    destination : destination,                    
-                }
 
-                // if(imagePath){
-                //     update.images = imagePath
-                // }
-                // if images uploaded, set them (replace)
-                if (req.files && req.files.length > 0) {
-                update.images = req.files.map(f => f.path);
-                }
-
-                const imagePath = req.files && req.files.length > 0 
-                ? req.files.map(file => file.path) 
-                : []   
-
-                const updatedTour = await Tour.findOneAndUpdate(
-                    {_id:id, is_deleted:false,guide:guideId},
-                    update,
-                    {new:true}
-                )   
-
-                if(!updatedTour){
-                    return next(new HttpError('Tour is not updated',400))
+                 const guide = await User.findById(guideId);
+                if(!guide || !guide.isVerified){
+                     return next(new HttpError("Your guide profile is not verified yet", 403))
                 }else{
-                    res.status(200).json({
-                        status:true,
-                        message:'Tour updated successfully',
-                        data: updatedTour
-                    })
+
+                    const update = {
+                        title : title,
+                        description : description,
+                        itinerary : itinerary,
+                        duration : duration,
+                        highlights : highlights,
+                        price : price,
+                        availability : availability,
+                        included : included,
+                        excluded : excluded,
+                        meetingPoint : meetingPoint,
+                        category : category,
+                        rating : rating,
+                        destination : destination,                    
+                    }
+    
+                    // if(imagePath){
+                    //     update.images = imagePath
+                    // }
+                    // if images uploaded, set them (replace)
+                    if (req.files && req.files.length > 0) {
+                    update.images = req.files.map(f => f.path);
+                    }
+    
+                    const imagePath = req.files && req.files.length > 0 
+                    ? req.files.map(file => file.path) 
+                    : []   
+    
+                    const updatedTour = await Tour.findOneAndUpdate(
+                        {_id:id, is_deleted:false,guide:guideId},
+                        update,
+                        {new:true}
+                    )   
+    
+                    if(!updatedTour){
+                        return next(new HttpError('Tour is not updated',400))
+                    }else{
+                        res.status(200).json({
+                            status:true,
+                            message:'Tour updated successfully',
+                            data: updatedTour
+                        })
+                    }
                 }
+
             }
         }
 
@@ -174,29 +269,34 @@ export const deleteTour = async (req,res,next) => {
         }
         else{
 
-            const deleted = await Tour.findOneAndUpdate(
-                {_id:id, is_deleted: false,guide:guideId},
-                {is_deleted:true},
-                {new:true}
-            )
+             const guide = await User.findById(guideId);
+                if(!guide || !guide.isVerified){
+                     return next(new HttpError("Your guide profile is not verified yet", 403))
+                }else{
 
-            if(!deleted){
-                return next(new HttpError('Tour not found or already deleted ',404))
-            } else{
-                res.status(200).json({
-                    status:true,
-                    message:'Tour deleted successfully',
-                    data:null
-                })
-            }
+                    const deleted = await Tour.findOneAndUpdate(
+                        {_id:id, is_deleted: false,guide:guideId},
+                        {is_deleted:true},
+                        {new:true}
+                    )
+        
+                    if(!deleted){
+                        return next(new HttpError('Tour not found or already deleted ',404))
+                    } else{
+                        res.status(200).json({
+                            status:true,
+                            message:'Tour deleted successfully',
+                            data:null
+                        })
+                    }
+                }
+
         }
     }catch(err){
         console.error('delete tour',err)
         return next(new HttpError('Oops! Something went wrong while deleting the tour',500))
     }
 }
-
-
 
 
 //get single tour
@@ -244,29 +344,33 @@ export const toggleTourActiveStatus = async (req,res,next) => {
             return next(new HttpError('You are not authorized to perform this action', 403));
         }else{
 
-            const tour = await Tour.findOne({is_deleted:false, _id: tourId, guide: guideId})
+             const guide = await User.findById(guideId);
+                if(!guide || !guide.isVerified){
+                     return next(new HttpError("Your guide profile is not verified yet", 403))
+                }else{
 
-            if (!tour) {
-                return next(new HttpError('Tour not found or you are not the owner', 404));
-            }else{
-
-                tour.isActive = !tour.isActive
-                await tour.save()
-
-                res.status(200).json({
-                    status: true,
-                    message: `Tour has been ${tour.isActive ? 'enabled' : 'disabled'} successfully`,
-                    data: tour,
-                });
-            }
+                    const tour = await Tour.findOne({is_deleted:false, _id: tourId, guide: guideId})
+        
+                    if (!tour) {
+                        return next(new HttpError('Tour not found or you are not the owner', 404));
+                    }else{
+        
+                        tour.isActive = !tour.isActive
+                        await tour.save()
+        
+                        res.status(200).json({
+                            status: true,
+                            message: `Tour has been ${tour.isActive ? 'enabled' : 'disabled'} successfully`,
+                            data: tour,
+                        });
+                    }
+                }
         }
 
     }catch(err){
         return next(new HttpError('Oops! Something went wrong',500))
     }
 }
-
-
 
 
 
@@ -418,7 +522,6 @@ export const getAllTour = async (req, res, next) => {
 
 
 //getToursByGuide route (for travellers visiting a guide’s profile)
-
 export const getPublicToursByGuide = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -453,4 +556,131 @@ export const getPublicToursByGuide = async (req, res, next) => {
     console.error("Error fetching public tours by guide:", err);
     return next(new HttpError("Oops! Something went wrong", 500));
   }
+};
+
+//get all tours by destination
+export const getAllTourByDestination = async (req, res, next) => {
+    try{
+         const {id} = req.params
+
+         const tours = await Tour.find({is_deleted: false, destination: id, isActive: true,})
+         .populate('destination', 'name')
+         .populate('guide','name email')
+
+         if(tours){
+            res.status(200).json({
+                status: true,
+                message:null,
+                data: tours
+            })
+         }
+    }catch(err){
+        console.error("get all tour by destination error",err)
+        return next(new HttpError('Oops! Something went wrong', 500))
+    }
+}
+
+
+//list for public without authentication
+
+export const getAllToursPublic = async (req, res, next) => {
+    try {
+        const { 
+            destination, 
+            title, 
+            category, 
+            priceMin, 
+            priceMax, 
+            durationMin, 
+            durationMax, 
+            date, 
+            ratingMin, 
+            popular 
+        } = req.query;
+
+        // Public query — only active and not deleted/blocked
+        let query = { 
+            is_deleted: false, 
+            isBlocked: false, 
+            isActive: true 
+        };
+
+        // Destination filter
+        if (destination && mongoose.Types.ObjectId.isValid(destination)) {
+            query.destination = destination;
+        }
+
+        // Title search
+        if (title) {
+            query.title = {
+                $regex: title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 
+                $options: 'i'
+            };
+        }
+
+        // Category filter
+        if (category) {
+            query.category = category;
+        }
+
+        // Price range
+        if (priceMin || priceMax) {
+            query.price = {};
+            if (priceMin) query.price.$gte = Number(priceMin);
+            if (priceMax) query.price.$lte = Number(priceMax);
+        }
+
+        // Duration range
+        if (durationMin || durationMax) {
+            query.duration = {};
+            if (durationMin) query.duration.$gte = Number(durationMin);
+            if (durationMax) query.duration.$lte = Number(durationMax);
+        }
+
+        // Rating filter
+        if (ratingMin) {
+            query.rating = { $gte: Number(ratingMin) };
+        }
+
+        // Availability filter by date
+        if (date) {
+            const d = new Date(date);
+            if (isNaN(d.getTime())) {
+                return next(new HttpError('Invalid date format. Use YYYY-MM-DD', 400));
+            }
+            const filterDateStart = new Date(d.setHours(0,0,0,0));
+            const filterDateEnd = new Date(d.setHours(23,59,59,999));
+
+            query.availability = {
+                $elemMatch: {
+                    date: { $gte: filterDateStart, $lte: filterDateEnd },
+                    slots: { $gt: 0 }
+                }
+            };
+        }
+
+        // Build query
+        let tourList = Tour.find(query)
+            .populate("destination", "name")
+            .populate("guide", "name email");
+
+        // Sorting
+        if (popular === "true") {
+            tourList = tourList.sort({ rating: -1 });
+        } else {
+            tourList = tourList.sort({ createdAt: -1 });
+        }
+
+        const tours = await tourList;
+
+        res.status(200).json({
+            status: true,
+            message: null,
+            data: tours
+        });
+
+    } catch (err) {
+        console.error("Error fetching public tours", err);
+        return next(new HttpError("Oops! Something went wrong", 500));
+    }
 };

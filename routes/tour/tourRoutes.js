@@ -1,11 +1,15 @@
 import { Router } from "express";
 import userAuthCheck from "../../middlewares/userAuthCheck.js";
-import { createTour, deleteTour, getAllTour, getPublicToursByGuide, updateTour, viewTour } from "../../controllers/tour/tourController.js";
+import { createTour, deleteTour, getAllTour, getAllTourByDestination, getAllToursPublic, getPublicToursByGuide, toggleTourActiveStatus, updateTour, viewTour } from "../../controllers/tour/tourController.js";
 import upload from "../../middlewares/fileUpload.js";
 import { check } from "express-validator";
+import { getToursByDestination } from "../../controllers/destination/destinationController.js";
 
 const tourRoute = Router()
 
+tourRoute.get('/publicView',getAllToursPublic)
+
+//auth check middleware
 tourRoute.use(userAuthCheck)
 
 tourRoute.post('/createtour',upload.array('images',3),
@@ -95,6 +99,7 @@ tourRoute.post('/createtour',upload.array('images',3),
 
 
 tourRoute.get('/viewAll',getAllTour)
+tourRoute.get('/allTourByDestination/:id',getAllTourByDestination)
 tourRoute.get('/guide/:id',getPublicToursByGuide)
 tourRoute.get('/viewtour/:id', viewTour)
 tourRoute.patch('/update/:id',upload.array('images',3),
@@ -130,6 +135,8 @@ tourRoute.patch('/update/:id',upload.array('images',3),
 
 ],updateTour)
 tourRoute.patch('/deleteTour/:id',deleteTour)
+tourRoute.get('/destination/:id',getToursByDestination)
+tourRoute.patch('/toggleStatus/:tourId',toggleTourActiveStatus)
 
 
 export default tourRoute

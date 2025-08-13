@@ -20,6 +20,7 @@ const notificationSchema = mongoose.Schema(
         "payment_received",
         "tour_updated",
         "admin_announcement",
+        "guide_verified",
         "custom",
       ],
       required: true,
@@ -44,6 +45,10 @@ const notificationSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isDeleted:{
+      type: Boolean,
+      default: false
+    }
   },
     {
     timestamps: true    

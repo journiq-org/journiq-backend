@@ -1,6 +1,6 @@
 import { Router } from "express";
 import userAuthCheck from "../../middlewares/userAuthCheck.js";
-import { getAllUser, getUserById, toggleBlockUser ,getBlockedUsers, deleteUser, getAllGuide, verifyGuide, revokeGuide, toggleBlockTour, getTourByGuide, getSingleTourByGuide, getBookingsByTour, getSingleBooking } from "../../controllers/admin/adminController.js";
+import { getAllUser, getUserById, toggleBlockUser ,getBlockedUsers, deleteUser, getAllGuide, verifyGuide, revokeGuide, toggleBlockTour, getTourByGuide, getSingleTourByGuide, getBookingsByTour, getSingleBooking, adminDeleteReview } from "../../controllers/admin/adminController.js";
 
 
 const adminRoute = Router()
@@ -14,6 +14,7 @@ adminRoute.get('/users/blockedUsers',getBlockedUsers)
 //guide
 adminRoute.get('/guide', getAllGuide)
 
+adminRoute.patch('/deleteReview/:id', adminDeleteReview)
 //path with id
 adminRoute.get('/users/:id',getUserById)
 adminRoute.patch('/users/block/:id', toggleBlockUser)

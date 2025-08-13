@@ -1,6 +1,9 @@
 import { validationResult } from 'express-validator'
 import HttpError from '../../middlewares/httpError.js'
 import Destination from '../../models/Destination.js'
+import Booking from "../../models/Booking.js";
+import Tour from '../../models/Tour.js';
+
 
 
 //create destination
@@ -21,7 +24,7 @@ export const createDestination = async(req, res,next) => {
                 location,
             } = req.body
 
-            const imagePath = req.file?.path
+            const imagePaths = req.files?.map(file => file.path) || [];
 
             const{user_id: adminId, user_role: tokenRole} = req.user_data
 
@@ -35,7 +38,7 @@ export const createDestination = async(req, res,next) => {
                     country,
                     city,
                     description,
-                    images: imagePath ? [imagePath] : [],
+                    images: imagePaths ,
                     popularAttractions,
                     bestSeason,
                     tags,
@@ -166,29 +169,13 @@ export const deleteDestination = async (req,res,next) => {
     }
 }
 
-//get all destination
-export const getAlldestinations = async(req,res,next) => {
-    try{
-        const destinations = await Destination.find({is_deleted: false}).sort({ createdAt : -1}) // to list out in descending form
-
-        if(destinations){
-            res.status(200).json({
-                status:true,
-                message:null,
-                data: destinations
-            })
-        }
-    }catch(err){
-        return next(new HttpError('Oops! Something went wrong',500))
-    }
-}
 
 // view single destination
 export const getDestinationById = async (req, res,next) => {
     try{
         const id = req.params.id
 
-        const destination = await Destination.findOne({is_deleted:false,_id:id})
+        const destination = await Destination.findOne({is_deleted:false,_id:id, is_active:true})
         
         if(!destination){
             return next(new HttpError('Destination not found',404))
@@ -206,3 +193,222 @@ export const getDestinationById = async (req, res,next) => {
     }
 }
 
+
+// //get all destination
+// export const getAlldestinations = async(req,res,next) => {
+//     try{
+//         const destinations = await Destination.find({is_deleted: false}).sort({ createdAt : -1}) // to list out in descending form
+
+//         if(destinations){
+//             res.status(200).json({
+//                 status:true,
+//                 message:null,
+//                 data: destinations
+//             })
+//         }
+//     }catch(err){
+//         return next(new HttpError('Oops! Something went wrong',500))
+//     }
+// }
+
+
+
+// GET all destinations with search & filters
+export const getAlldestinations = async (req, res, next) => {
+    try {
+        const { 
+            search, 
+            country, 
+            bestSeason, 
+            tags, 
+            popularAttractions, 
+            sort 
+        } = req.query;
+
+        let query = { is_deleted: false , is_active:true};
+
+        // Search by name, country, city, tags (case-insensitive)
+        if (search) {
+            const searchRegex = new RegExp(search, "i");
+            query.$or = [
+                { name: searchRegex },
+                { country: searchRegex },
+                { city: searchRegex },
+                { tags: searchRegex }
+            ];
+        }
+
+        // Filter: country
+        if (country) {
+            query.country = { $regex: new RegExp(country, "i") };
+        }
+
+        // Filter: bestSeason
+        if (bestSeason) {
+            query.bestSeason = { $regex: new RegExp(bestSeason, "i") };
+        }
+
+        // Filter: tags (must contain all tags)
+        if (tags) {
+            const tagsArray = tags.split(",").map(tag => tag.trim());
+            query.tags = { $all: tagsArray };
+        }
+
+        // Filter: popularAttractions (must contain all)
+        if (popularAttractions) {
+        const attractionsArray = popularAttractions.split(",").map(attr => attr.trim());
+        query.popularAttractions = { 
+            $all: attractionsArray.map(attr => new RegExp(attr, "i")) 
+        };
+}
+
+        // Base query
+        let destinationList = Destination.find(query);
+
+        // Sorting
+        if (sort === "name") {
+            destinationList = destinationList.sort({ name: 1 });
+        } else if (sort === "name-desc") {
+            destinationList = destinationList.sort({ name: -1 });
+        } else if (sort === "oldest") {
+            destinationList = destinationList.sort({ createdAt: 1 });
+        } else {
+            destinationList = destinationList.sort({ createdAt: -1 }); // default latest first
+        }
+
+        const destinations = await destinationList;
+
+        res.status(200).json({
+            status: true,
+            message: null,
+            count: destinations.length,
+            data: destinations
+        });
+
+    } catch (err) {
+        console.error("Error fetching destinations", err);
+        return next(new HttpError("Oops! Something went wrong", 500));
+    }
+};
+
+
+
+//get popular destination
+export const getPopularDestinations = async (req, res, next) => {
+  try {
+    const popularDestinations = await Booking.aggregate([
+      // Consider only confirmed or completed bookings
+      {
+        $match: {
+          status: { $in: ["confirmed", "completed"] }
+        }
+      },
+      // Join tours to get destination
+      {
+        $lookup: {
+          from: "tours",
+          localField: "tour",
+          foreignField: "_id",
+          as: "tourData"
+        }
+      },
+      { $unwind: "$tourData" },
+      // Group by destination and count bookings
+      {
+        $group: {
+          _id: "$tourData.destination",
+          bookingCount: { $sum: 1 }
+        }
+      },
+      // Sort by booking count
+      { $sort: { bookingCount: -1 } },
+      // Limit to top 5
+      { $limit: 5 },
+      // Join destination details
+      {
+        $lookup: {
+          from: "destinations",
+          localField: "_id",
+          foreignField: "_id",
+          as: "destinationData"
+        }
+      },
+      { $unwind: "$destinationData" },
+      // Project final fields
+      {
+        $project: {
+          _id: 0,
+          destinationId: "$destinationData._id",
+          name: "$destinationData.name",
+          image: "$destinationData.image",
+          bookingCount: 1
+        }
+      }
+    ]);
+
+    res.json(popularDestinations);
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+//get tours by destination
+export const getToursByDestination = async(req,res, next) => {
+    try{
+
+        const {id} = req.params //destination id
+
+        const tours = await Tour.find({destination: id, is_deleted:false})
+        .populate("guide", "name email") // show guide details if needed
+        .populate("destination", "name country") // show destination details
+        .lean();
+
+        if (!tours || tours.length === 0) {
+            return res.status(404).json({ message: "No tours found for this destination" });
+        }else{
+            res.status(200).json({
+                count:tours.length,
+                status: true,
+                message:null,
+                data:tours
+            })
+        }
+    }catch(err){
+        return next(new HttpError('Oops! Something went wrong', 500))
+    }
+}
+
+//toggle destination status
+export const toggleDestinationStatus = async(req,res,next)  => {
+    try{
+
+        const {id} = req.params
+
+        const { user_role: tokenRole} = req.user_data
+
+        if(tokenRole !== 'admin'){
+            return next(new HttpError('You are not authorized to perform this action', 403))
+        }else{
+            const toggleDestination = await Destination.findById(id)
+
+            if(!toggleDestination){
+                return next(new HttpError('Destination not found', 404))
+            }else{
+                
+                toggleDestination.is_active = !toggleDestination.is_active
+                await toggleDestination.save()
+
+                res.status(200).json({
+                    status:true,
+                    message:` Destination has been ${toggleDestination.is_active ? 'Unblocked' : 'Blocked' } successfully`,
+                    data: {
+                        destinationId: toggleDestination._id, 
+                        is_active: toggleDestination.is_active}
+                })
+            }
+        }
+    }catch(err){
+        return next (new HttpError('Oops ! Something went wrong', 500))
+    }
+}

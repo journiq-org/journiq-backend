@@ -1,0 +1,31 @@
+<table style="width:100%;max-width:600px;margin:auto;border-collapse:collapse;font-family:Arial,sans-serif;">
+  <tr>
+    <td style="background-color:#ff4d4d;color:white;padding:20px;text-align:center;font-size:20px;font-weight:bold;">
+      Journiq Notification
+    </td>
+  </tr>
+  <tr>
+    <td style="padding:20px;color:#333;">
+      <h2 style="margin-bottom:10px;">Hey {{name}},</h2>
+
+      {{#if isBlocked}}
+        <p>
+          Your account on <strong>Journiq</strong> has been <span style="color:red;font-weight:bold;">blocked</span> by our admin.  
+          This means you won’t be able to log in or use your account until it is unblocked.
+        </p>
+      {{else}}
+        <p>
+          Good news! 🎉 Your account on <strong>Journiq</strong> has been <span style="color:green;font-weight:bold;">unblocked</span>.  
+          You can now log back in and continue exploring amazing tours.
+        </p>
+      {{/if}}
+
+      <p style="margin-top:20px;">Best regards,<br/>Journiq Team</p>
+    </td>
+  </tr>
+  <tr>
+    <td style="background-color:#f4f4f4;text-align:center;padding:10px;font-size:12px;color:#777;">
+      © {{year}} Journiq. All rights reserved.
+    </td>
+  </tr>
+</table>
