@@ -1,6 +1,55 @@
-import Booking from '../../models/Booking.js';
-import Tour from '../../models/Tour.js';
-import HttpError from '../../middlewares/httpError.js';
+import Booking from "../../models/Booking.js";
+import Review from "../../models/Review.js";
+import { updateTourRatings } from "../../utils/updateTourRatings.js";
+import HttpError from "../../middlewares/httpError.js";
+import Tour from "../../models/Tour.js";
+
+export const addExperienceToBooking = async (req, res, next) => {
+  try {
+    const { bookingId } = req.params;
+    const { serviceQuality, punctuality, satisfactionSurvey, comment } = req.body;
+    const { user_id: travellerId } = req.user_data;
+
+    const booking = await Booking.findById(bookingId).populate("tour");
+    if (!booking) return next(new HttpError("Booking not found", 404));
+
+    if (booking.user.toString() !== travellerId) {
+      return next(new HttpError("Unauthorized: Not your booking", 403));
+    }
+
+    if (booking.status !== "completed") {
+      return next(new HttpError("You can only rate completed tours", 400));
+    }
+
+    booking.experience = { serviceQuality, punctuality, satisfactionSurvey };
+    await booking.save();
+
+    // Calculate rating
+    const rating = Math.round(
+      ((serviceQuality + punctuality + satisfactionSurvey) / 3) * 10
+    ) / 10;
+
+    // Create review if not already exists
+    const existingReview = await Review.findOne({ user: travellerId, tour: booking.tour._id });
+    if (!existingReview) {
+      await Review.create({
+        user: travellerId,
+        tour: booking.tour._id,
+        rating,
+        comment,
+        experience: booking.experience
+      });
+    }
+
+    // Update the tour’s average rating
+    await updateTourRatings(booking.tour._id);
+
+    res.status(201).json({ message: "Experience and review added successfully" });
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 const updateAvailabilitySlots = (tour, bookingDate, numOfPeople) => {
   const bookingDateOnly = new Date(bookingDate).toISOString().split('T')[0];

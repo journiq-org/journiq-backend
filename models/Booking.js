@@ -25,13 +25,19 @@ const bookingSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["pending", "confirmed", "rejected", "completed", "cancelled"],
+    enum: ["pending", "confirmed","accepted", "rejected", "completed", "cancelled"],
     default: "pending"
   },
   isDeleted: {
   type: Boolean,
   default: false,
 },
+experience: {
+  serviceQuality: { type: Number, min: 1, max: 5 },
+  punctuality: { type: Number, min: 1, max: 5 },
+  satisfactionSurvey: { type: Number, min: 1, max: 5 }
+},
+
 }, {
   timestamps: true,
 });
