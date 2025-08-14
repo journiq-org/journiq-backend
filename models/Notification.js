@@ -21,6 +21,8 @@ const notificationSchema = mongoose.Schema(
         "tour_updated",
         "admin_announcement",
         "guide_verified",
+        "tour_blocked",
+        "tour_unblocked",
         "custom",
       ],
       required: true,

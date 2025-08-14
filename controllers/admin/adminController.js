@@ -144,7 +144,7 @@ export const getBlockedUsers = async (req,res,next) => {
     }
 }
 
-//delete user
+//delete user (email)
 export const deleteUser = async (req,res,next) => {
     try{
 
@@ -228,7 +228,7 @@ export const getAllGuide = async (req,res,next) => {
     }
 }
 
-//verify guide
+//verify guide (both inbox and mail)
 export const verifyGuide = async (req,res,next) => {
     try{
 
@@ -315,6 +315,35 @@ export const revokeGuide = async (req,res,next) => {
             if(!guide){
                 return next(new HttpError('Guide not found or already unverified', 404))
             }else{
+
+                //  Create in-app notification
+                await Notification.create({
+                    recipient: guide._id,
+                    type: "custom",
+                    message: "Your guide verification has been revoked by the admin.",
+                    isRead: false,
+                });
+
+                //  Send email notification
+                const mailOptions = {
+                    from: process.env.EMAIL_USER,
+                    to: guide.email,
+                    subject: "Important: Your Guide Verification Has Been Revoked",
+                    template: "guideRevokedNotification", // Handlebars template file name
+                    context: {
+                        name: guide.name,
+                    },
+                };
+
+                transporter.sendMail(mailOptions, (error, info) => {
+                    if (error) {
+                        console.error(`Failed to send revocation email:`, error);
+                    } else {
+                        console.log(`Revocation email sent to ${guide.email}: ${info.response}`);
+                    }
+                });
+
+
                 res.status(200).json({
                     status:true,
                     message:'Guide verification has been revoked',
@@ -332,7 +361,7 @@ export const revokeGuide = async (req,res,next) => {
 //TOUR MODERATION - not checked in postman |
  
 
-// block tour - toggle
+// block tour - toggle (inbox)
 export const toggleBlockTour = async (req,res,next) => {
     try{
         const id = req.params.id
@@ -344,6 +373,7 @@ export const toggleBlockTour = async (req,res,next) => {
         }else{
 
             const blockedTour = await Tour.findOne({is_deleted:false, _id:id})
+            .populate("guide", "_id name");
 
             if(!blockedTour){
                 return next(new HttpError('Tour not found',404))
@@ -351,6 +381,15 @@ export const toggleBlockTour = async (req,res,next) => {
 
                 blockedTour.isBlocked = !blockedTour.isBlocked
                 await blockedTour.save()
+
+                // Create in-app notification for the tour's guide
+                await Notification.create({
+                    recipient: blockedTour.guide._id, // send to guide
+                    type: blockedTour.isBlocked ? "tour_blocked" : "tour_unblocked",
+                    message: `Your tour "${blockedTour.title}" has been ${blockedTour.isBlocked ? "blocked" : "unblocked"} by the admin.`,
+                    isRead: false
+                });
+
 
                  res.status(200).json({
                     status:true,
@@ -366,6 +405,7 @@ export const toggleBlockTour = async (req,res,next) => {
         }
 
     }catch(err){
+        console.error('toggle block tour',err)
         return next(new HttpError('Oops! Something went wrong',500))
     }
 }
@@ -505,15 +545,37 @@ export const adminDeleteReview = async (req,res,next) => {
             return next(new HttpError('You are not authorized to perform this action',403))
         }else{
 
-            const deletedReview = await Review.findOneAndUpdate(
-                {_id:id,isDeleted:false},
-                {isDeleted:true},
-                {new:true}
-            )
+            // const deletedReview = await Review.findOneAndUpdate(
+            //     {_id:id,isDeleted:false},
+            //     {isDeleted:true},
+            //     {new:true}
+            // )
 
-            if(!deletedReview){
+            // First get the review with tour & user populated
+            const review = await Review.findOne({ _id: id, isDeleted: false })
+                .populate("tour", "title")
+                .populate("user", "_id name");
+
+
+            if(!review){
                 return next(new HttpError('Review is already deleted or not found',404))
             }else{
+
+                // Mark as deleted
+                review.isDeleted = true;
+                await review.save({ validateBeforeSave: false });
+
+
+
+                // Send in-app notification to review author
+                await Notification.create({
+                    recipient: review.user._id,
+                    type: "custom",
+                    message: `Your review on tour "${review.tour?.title || 'Unknown'}" has been removed by the admin.`,
+                    isRead: false
+                });
+
+
                 res.status(200).json({
                     status: true,
                     message: "Review deleted successfully",
@@ -522,6 +584,7 @@ export const adminDeleteReview = async (req,res,next) => {
             }
         }
     }catch(err){
+        console.error('admin delete rewiew:', err)
         return next(new HttpError('Oops! Something went wrong',500))
     }
 }

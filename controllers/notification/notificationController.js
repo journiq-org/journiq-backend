@@ -129,7 +129,7 @@ export const deleteNotification = async (req, res, next) => {
   }
 };
 
-// 6. Delete all notifications for a user
+// Delete all notifications for a user
 export const deleteAllNotifications = async (req, res, next) => {
   try {
     const { user_id } = req.user_data;
