@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import Booking from "../../models/Booking.js";
 import Review from "../../models/Review.js";
 import { updateTourRatings } from "../../utils/updateTourRatings.js";
@@ -50,8 +51,16 @@ export const addExperienceToBooking = async (req, res, next) => {
   }
 };
 
+=======
+import Booking from '../../models/Booking.js';
+import Tour from '../../models/Tour.js';
+import HttpError from '../../middlewares/httpError.js';
+import Notification from '../../models/Notification.js'
+import transporter from '../../config/email.js';
+import User from '../../models/User.js'
+>>>>>>> Stashed changes
 
-const updateAvailabilitySlots = (tour, bookingDate, numOfPeople) => {
+export const updateAvailabilitySlots = (tour, bookingDate, numOfPeople) => {
   const bookingDateOnly = new Date(bookingDate).toISOString().split('T')[0];
 
   const availability = tour.availability.find((a) => {
@@ -67,14 +76,18 @@ const updateAvailabilitySlots = (tour, bookingDate, numOfPeople) => {
   return tour;
 };
 
-// Create Booking
+// Create Booking (email + inapp)
 export const createBooking = async (req, res, next) => {
   try {
     const { tourId, date, numOfPeople } = req.body;
     const {user_id: travellerId} = req.user_data
 
-    const tour = await Tour.findById(tourId);
+    const tour = await Tour.findById(tourId).populate('guide', 'name email')
     if (!tour) return next(new HttpError("Tour not found", 404));
+
+     //  Get traveller details from DB
+    const traveller = await User.findById(travellerId).select("name email");
+    if (!traveller) return next(new HttpError("Traveller not found", 404));
 
     try {
       updateAvailabilitySlots(tour, date, numOfPeople);
@@ -95,6 +108,46 @@ export const createBooking = async (req, res, next) => {
     await booking.save();
     tour.markModified('availability'); 
     await tour.save();
+
+        // NOTIFICATIONS
+        
+    const guide = tour.guide;
+    
+    if (guide) {
+      //  In-app notification
+      await Notification.create({
+        recipient: guide._id,
+        sender: travellerId,
+        type: "booking_request",
+        message: `${traveller.name} has requested a booking for your tour "${tour.title}" on ${date}.`,
+        relatedBooking: booking._id,
+        relatedTour: tour._id,
+        isRead: false,
+      });
+
+      //  Email notification
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: guide.email,
+        subject: `New Booking Request for "${tour.title}"`,
+        template: "bookingRequestNotification", // Handlebars template filename
+        context: {
+          guideName: guide.name,
+          travellerName: req.user_data.name,
+          tourTitle: tour.title,
+          bookingDate: date,
+          numOfPeople,
+        },
+      };
+
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error(`Failed to send booking request email:`, error);
+        } else {
+          console.log(`Booking request email sent to ${guide.email}: ${info.response}`);
+        }
+      });
+    }
 
     res.status(201).json({ message: "Booking successful", booking });
   } catch (error) {
@@ -144,9 +197,77 @@ export const updateBookingStatus = async (req, res, next) => {
       id,
       { status },
       { new: true }
-    ).populate("tour");
+    ) 
+    .populate("tour")
+    .populate("traveller", "name email")
+    .populate("guide", "name email");
 
     if (!booking) return res.status(404).json({ message: "Booking not found" });
+
+
+        // Determine notification type and message based on status
+    let notifType, notifMessage, emailSubject, emailTemplate;
+
+    switch (status) {
+      case "confirmed":
+        notifType = "booking_confirmed";
+        notifMessage = `Your booking for "${booking.tour.title}" has been confirmed.`;
+        emailSubject = `Booking Confirmed: "${booking.tour.title}"`;
+        emailTemplate = "bookingConfirmedNotification";
+        break;
+      case "completed":
+        notifType = "custom";
+        notifMessage = `Your tour "${booking.tour.title}" has been completed.`;
+        emailSubject = `Tour Completed: "${booking.tour.title}"`;
+        emailTemplate = "bookingCompletedNotification";
+        break;
+      case "cancelled":
+        notifType = "booking_cancelled";
+        notifMessage = `Your booking for "${booking.tour.title}" has been cancelled.`;
+        emailSubject = `Booking Cancelled: "${booking.tour.title}"`;
+        emailTemplate = "bookingCancelledNotification";
+        break;
+      default:
+        notifType = "custom";
+        notifMessage = `Booking status for "${booking.tour.title}" has been updated to ${status}.`;
+        emailSubject = `Booking Status Updated: "${booking.tour.title}"`;
+        emailTemplate = "bookingStatusUpdatedNotification";
+    }
+
+    // In-app notification to traveller
+    await Notification.create({
+      recipient: booking.traveller._id,
+      sender: user_id,
+      type: notifType,
+      message: notifMessage,
+      relatedBooking: booking._id,
+      relatedTour: booking.tour._id,
+      isRead: false,
+    });
+
+    // Email notification to traveller
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: booking.traveller.email,
+      subject: emailSubject,
+      template: emailTemplate, // Handlebars template filename
+      context: {
+        travellerName: booking.traveller.name,
+        tourTitle: booking.tour.title,
+        bookingDate: booking.date,
+        guideName: booking.guide.name,
+        status: status,
+      },
+    };
+
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error(`Failed to send booking status update email:`, error);
+      } else {
+        console.log(`Booking status update email sent to ${booking.traveller.email}: ${info.response}`);
+      }
+    });
+
 
     res.status(200).json({
       message: "Booking status updated",
@@ -169,7 +290,14 @@ export const cancelBookingByUser = async (req, res, next) => {
     }
 
     // Find the booking
-    const booking = await Booking.findById(bookingId);
+    const booking = await Booking.findById(bookingId)
+    .populate("tour")
+      .populate({
+        path: "tour",
+        populate: { path: "guide", select: "name email" },
+      });
+
+
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
@@ -187,6 +315,46 @@ export const cancelBookingByUser = async (req, res, next) => {
     // Update booking status
     booking.status = "cancelled";
     await booking.save();
+
+
+    //  In-app notification (to Guide)
+    if (booking.tour && booking.tour.guide) {
+      await Notification.create({
+        recipient: booking.tour.guide._id,
+        sender: travellerId,
+        type: "booking_cancelled",
+        message: `${travellerName} has cancelled their booking for your tour "${booking.tour.title}".`,
+        relatedBooking: booking._id,
+        relatedTour: booking.tour._id,
+        isRead: false,
+      });
+
+      //  Email notification (to Guide)
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: booking.tour.guide.email,
+        subject: `Booking Cancelled: "${booking.tour.title}"`,
+        template: "bookingCancelledByTravellerNotification", // Handlebars template file
+        context: {
+          guideName: booking.tour.guide.name,
+          travellerName: travellerName,
+          tourTitle: booking.tour.title,
+          bookingDate: booking.date,
+        },
+      };
+
+      transporter.sendMail(mailOptions, (error, info) => {
+        if (error) {
+          console.error(` Failed to send cancellation email:`, error);
+        } else {
+          console.log(
+            ` Cancellation email sent to ${booking.tour.guide.email}: ${info.response}`
+          );
+        }
+      });
+    }
+
+
 
     res.status(200).json({
       message: "Booking cancelled successfully",
@@ -216,7 +384,10 @@ export const respondToBookingByGuide = async (req, res, next) => {
     }
 
     // Find booking and populate the tour
-    const booking = await Booking.findById(bookingId).populate("tour");
+    const booking = await Booking.findById(bookingId)
+     .populate("tour")
+     .populate("user", "name email"); // populate traveller
+
     if (!booking) {
       return next(new HttpError("Booking not found", 404));
     }
@@ -235,6 +406,57 @@ export const respondToBookingByGuide = async (req, res, next) => {
     // Update booking status
     booking.status = status;
     await booking.save();
+
+
+    //  In-app notification
+    await Notification.create({
+      recipient: booking.user._id,
+      sender: user_id,
+      type: "booking_" + status, // booking_accepted / booking_rejected
+      message: `Your booking for "${booking.tour.title}" was ${status} by the guide.`,
+      link: `/bookings/${booking._id}`,
+      relatedBooking: booking._id,
+      relatedTour: booking.tour._id,
+    });
+
+    //  Email notification
+
+    // Load handlebars template
+    const __dirname = path.resolve(); // ES modules
+    const templatePath = path.join(
+      __dirname,
+      "templates",
+      "bookingResponse.hbs"
+    );
+    const source = fs.readFileSync(templatePath, "utf8");
+    const template = handlebars.compile(source);
+
+    const emailHtml = template({
+      travellerName: booking.user.name,
+      guideName: req.user_data.name || "Guide",
+      tourTitle: booking.tour.title,
+      status: status,
+      bookingLink: `https://yourfrontend.com/bookings/${booking._id}`,
+    });
+
+    // Nodemailer transporter
+    const transporter = nodemailer.createTransport({
+      host: process.env.MAIL_HOST,
+      port: process.env.MAIL_PORT,
+      auth: {
+        user: process.env.MAIL_USER,
+        pass: process.env.MAIL_PASS,
+      },
+    });
+
+    await transporter.sendMail({
+      from: `"Journiq" <${process.env.MAIL_USER}>`,
+      to: booking.user.email,
+      subject: `Your booking was ${status}`,
+      html: emailHtml,
+    });
+
+
 
     return res.status(200).json({
       message: `Booking ${status} successfully.`,

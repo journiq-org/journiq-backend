@@ -3,7 +3,9 @@ import HttpError from '../../middlewares/httpError.js'
 import Destination from '../../models/Destination.js'
 import Booking from "../../models/Booking.js";
 import Tour from '../../models/Tour.js';
-
+import Notification from '../../models/Notification.js'
+import User from '../../models/User.js'
+import transporter from '../../config/email.js';
 
 
 //create destination
@@ -48,7 +50,28 @@ export const createDestination = async(req, res,next) => {
 
                 if(!newDestination){
                     return next(new HttpError('Failed to create Destination', 400))
+                    
+                    
                 }else{
+
+                    // ✅ In-app Notification for all guides
+                    const guides = await User.find({ role: "guide" }).select("_id");
+
+                    if (guides.length > 0) {
+                    const notifications = guides.map((guide) => ({
+                        recipient: guide._id,
+                        sender: adminId,
+                        type: "custom",
+                        message: `A new destination "${newDestination.name}" has been added. Create your tours now!`,
+                        link: `/destinations/${newDestination._id}`, // frontend route
+                        relatedTour: null,
+                        relatedBooking: null,
+                    }));
+
+                    await Notification.insertMany(notifications);
+                    }
+
+
                     res.status(201).json({
                         status:true,
                         message: 'Destination created successfully',
@@ -156,6 +179,25 @@ export const deleteDestination = async (req,res,next) => {
             if(!deleted){
                 return next(new HttpError('Destination is not found or already deleted',404))
             }else{
+
+                // ✅ In-app notification for all guides
+                const guides = await User.find({ role: "guide" }).select("_id");
+
+                if (guides.length > 0) {
+                const notifications = guides.map((guide) => ({
+                    recipient: guide._id,
+                    sender: adminId,
+                    type: "custom",
+                    message: `The destination "${deleted.name}" has been removed by admin.`,
+                    link: `/destinations`, // can redirect to destinations list
+                    relatedTour: null,
+                    relatedBooking: null,
+                }));
+
+                await Notification.insertMany(notifications);
+                }
+
+
                 res.status(200).json({
                     status:true,
                     message:'Destination deleted successfully',
@@ -385,7 +427,7 @@ export const toggleDestinationStatus = async(req,res,next)  => {
 
         const {id} = req.params
 
-        const { user_role: tokenRole} = req.user_data
+        const { user_role: tokenRole, user_id: adminId} = req.user_data
 
         if(tokenRole !== 'admin'){
             return next(new HttpError('You are not authorized to perform this action', 403))
@@ -396,8 +438,54 @@ export const toggleDestinationStatus = async(req,res,next)  => {
                 return next(new HttpError('Destination not found', 404))
             }else{
                 
+                //flip status
                 toggleDestination.is_active = !toggleDestination.is_active
                 await toggleDestination.save()
+
+
+                const statusText = toggleDestination.is_active ? "Activated (Unblocked)" : "Deactivated (Blocked)";
+                const message = `The destination "${toggleDestination.name}" has been ${statusText} by admin.`;
+
+                //  In-app notification for all guides
+                const guides = await User.find({ role: "guide" }).select("_id name email");
+
+                if (guides.length > 0) {
+                    const notifications = guides.map((guide) => ({
+                        recipient: guide._id,
+                        sender: adminId,
+                        type: "custom",
+                        message,
+                        link: `/destinations/${toggleDestination._id}`,
+                    }));
+
+                    await Notification.insertMany(notifications);
+
+                    //  Send email to all guides
+                    for (const guide of guides) {
+                        const mailOptions = {
+                            from: process.env.EMAIL_USER,
+                            to: guide.email,
+                            subject: `Destination ${statusText}`,
+                            template: "destinationStatus", // your .hbs file name
+                            context: {
+                                guideName: guide.name || "Guide",
+                                destinationName: toggleDestination.name,
+                                statusText,
+                                adminNote: "Please check the destinations page for more details.",
+                                link: `${process.env.FRONTEND_URL}/destinations/${toggleDestination._id}`,
+                                year: new Date().getFullYear(),
+                            },
+                        };
+
+                        transporter.sendMail(mailOptions, (error, info) => {
+                            if (error) {
+                                console.error(`Failed to send destination status notification:`, error);
+                            } else {
+                                console.log(`Guide notified: ${info.response}`);
+                            }
+                        });
+                    }
+                }
 
                 res.status(200).json({
                     status:true,
@@ -409,6 +497,7 @@ export const toggleDestinationStatus = async(req,res,next)  => {
             }
         }
     }catch(err){
+        console.error("toggle destination status erro", err)
         return next (new HttpError('Oops ! Something went wrong', 500))
     }
 }

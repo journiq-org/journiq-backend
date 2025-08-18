@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Tour Status Update</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#f9f9f9; padding:20px; }
+    .container { max-width:600px; margin:auto; background:#fff; padding:25px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.1); }
+    .header { text-align:center; font-size:20px; font-weight:bold; color:#333; }
+    .status { color: {{#if (eq status "enabled")}}green{{else}}red{{/if}}; font-weight:bold; }
+    .footer { margin-top:20px; font-size:12px; color:#777; text-align:center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">Tour Status Update</div>
+    <p>Hi {{travellerName}},</p>
+    <p>The tour <strong>"{{tourTitle}}"</strong> has been <span class="status">{{status}}</span> by your guide <strong>{{guideName}}</strong>.</p>
+    <p>If this affects your booking, please check your Journiq account for more details.</p>
+    <br />
+    <p>Best regards,<br/>The Journiq Team</p>
+    <div class="footer">© {{year}} Journiq. All rights reserved.</div>
+  </div>
+</body>
+</html>

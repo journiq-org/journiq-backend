@@ -1,11 +1,15 @@
+import mongoose from "mongoose"
+import path from "path"
+import fs from "fs";
+import handlebars from "handlebars";
 import { validationResult } from "express-validator"
 import HttpError from "../../middlewares/httpError.js"
 import Tour from "../../models/Tour.js"
 import User from "../../models/User.js"
-import mongoose from "mongoose"
 import Destination from "../../models/Destination.js"
-// import { sendNotification } from "../../services/notificationService.js"
 import transporter from "../../config/email.js"
+import Booking from "../../models/Booking.js"
+import Notification from "../../models/Notification.js"
 // import { sendNotification } from "../../services/notificationService.js"
 
 
@@ -233,11 +237,41 @@ export const updateTour = async (req,res,next) => {
                         {_id:id, is_deleted:false,guide:guideId},
                         update,
                         {new:true}
-                    )   
+                    ).populate("destination", "name")
+                     .populate("guide", "name email");   
     
                     if(!updatedTour){
                         return next(new HttpError('Tour is not updated',400))
                     }else{
+
+                         //  Send Email Notification to Admin
+                        const admin = await User.findOne({ role: "admin" }).select("email name");
+                        if (admin) {
+                            const mailOptions = {
+                                from: process.env.EMAIL_USER,
+                                to: admin.email,
+                                subject: `Tour Updated: ${updatedTour.title}`,
+                                template: "tourUpdatedNotification", // handlebars file
+                                context: {
+                                    adminName: admin.name,
+                                    guideName: updatedTour.guide.name,
+                                    title: updatedTour.title,
+                                    destination: updatedTour.destination?.name,
+                                    price: updatedTour.price,
+                                    link: `https://yourfrontend.com/tour/${updatedTour._id}`
+                                },
+                            };
+
+                            transporter.sendMail(mailOptions, (error, info) => {
+                                if (error) {
+                                    console.error("Failed to send tour update notification:", error);
+                                } else {
+                                    console.log("Admin notified about tour update:", info.response);
+                                }
+                            });
+                        }
+
+
                         res.status(200).json({
                             status:true,
                             message:'Tour updated successfully',
@@ -278,11 +312,60 @@ export const deleteTour = async (req,res,next) => {
                         {_id:id, is_deleted: false,guide:guideId},
                         {is_deleted:true},
                         {new:true}
-                    )
+                    ).populate("destination", "name")
+                     .populate("guide", "name");
         
                     if(!deleted){
                         return next(new HttpError('Tour not found or already deleted ',404))
                     } else{
+
+                        //  Find travellers with active bookings for this tour
+                        const bookings = await Booking.find({ 
+                            tour: deleted._id, 
+                            status: { $in: ["pending", "confirmed"] } 
+                        }).populate("user", "name email");
+
+                        //  Notify each traveller
+                        for (const booking of bookings) {
+                            const traveller = booking.user;
+                            if (!traveller) continue;
+
+                            // In-app notification
+                            await Notification.create({
+                                recipient: traveller._id,
+                                sender: guideId,
+                                type: "custom",
+                                message: `The tour "${deleted.title}" you booked has been cancelled.`,
+                                link: `https://yourfrontend.com/bookings/${booking._id}`,
+                                relatedTour: deleted._id,
+                            });
+
+                            // Email notification
+                            const mailOptions = {
+                                from: process.env.EMAIL_USER,
+                                to: traveller.email,
+                                subject: `Tour Cancelled: ${deleted.title}`,
+                                template: "tourDeletedNotification", // handlebars file
+                                context: {
+                                    travellerName: traveller.name,
+                                    tourTitle: deleted.title,
+                                    guideName: deleted.guide.name,
+                                    destination: deleted.destination?.name,
+                                    bookingId: booking._id,
+                                    link: `https://yourfrontend.com/bookings/${booking._id}`
+                                },
+                            };
+
+                            transporter.sendMail(mailOptions, (error, info) => {
+                                if (error) {
+                                    console.error(`Failed to send cancellation email to ${traveller.email}:`, error);
+                                } else {
+                                    console.log(`Cancellation email sent to ${traveller.email}:`, info.response);
+                                }
+                            });
+                        }
+
+
                         res.status(200).json({
                             status:true,
                             message:'Tour deleted successfully',
@@ -333,7 +416,7 @@ export const viewTour = async (req, res, next) => {
     }
 }
 
-// toggle tour active status for temporarily disabling a tour - not checked on postman , ROUTE IS IN GUIDEROUTE
+// toggle tour active status for temporarily disabling a tour , ROUTE IS IN GUIDEROUTE
 export const toggleTourActiveStatus = async (req,res,next) => {
     try{
 
@@ -357,6 +440,51 @@ export const toggleTourActiveStatus = async (req,res,next) => {
         
                         tour.isActive = !tour.isActive
                         await tour.save()
+
+
+                        
+                        //  Fetch travellers with active bookings for this tour
+                        const bookings = await Booking.find({ tour: tourId, status: "confirmed" })
+                            .populate("user", "name email")
+                            console.log("Bookings found:", bookings.length)
+
+
+                        // Load handlebars template
+                        const templatePath = path.join(process.cwd(), "views", "tourStatusUpdate.handlebars")
+                        const source = fs.readFileSync(templatePath, "utf8")
+                        const compiledTemplate = handlebars.compile(source)
+
+                        // Notify each traveller
+                        for (const booking of bookings) {
+                            const traveller = booking.user
+                            if (!traveller) continue
+
+                            // In-app notification
+                            await Notification.create({
+                                user: traveller._id,
+                                title: "Tour Status Update",
+                                message: `The tour "${tour.title}" has been ${tour.isActive ? "enabled" : "disabled"} by the guide.`,
+                                type: "tour",
+                                relatedId: tour._id,
+                                isRead: false
+                            })
+
+                            // Email notification
+                            const htmlContent = compiledTemplate({
+                                travellerName: traveller.name,
+                                tourTitle: tour.title,
+                                status: tour.isActive ? "enabled" : "disabled",
+                                guideName: guide.name,
+                                year: new Date().getFullYear()
+                            })
+
+                            await transporter.sendMail({
+                                from: `"Journiq" <no-reply@journiq.com>`,
+                                to: traveller.email,
+                                subject: `Update: Tour "${tour.title}" has been ${tour.isActive ? "enabled" : "disabled"}`,
+                                html: htmlContent
+                            })
+                        }
         
                         res.status(200).json({
                             status: true,
@@ -368,6 +496,7 @@ export const toggleTourActiveStatus = async (req,res,next) => {
         }
 
     }catch(err){
+        console.error("toggle tour status error", err)
         return next(new HttpError('Oops! Something went wrong',500))
     }
 }

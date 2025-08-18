@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>Tour Update Notification</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f9f9f9;
+        padding: 20px;
+      }
+      .container {
+        background: #ffffff;
+        padding: 20px;
+        border-radius: 10px;
+        max-width: 600px;
+        margin: auto;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
+      h2 {
+        color: #333;
+      }
+      .highlight {
+        color: #1a73e8;
+        font-weight: bold;
+      }
+      .btn {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 12px 20px;
+        background: #1a73e8;
+        color: #ffffff;
+        text-decoration: none;
+        border-radius: 5px;
+      }
+      .footer {
+        margin-top: 20px;
+        font-size: 12px;
+        color: #777;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Hello {{adminName}},</h2>
+      <p>
+        The tour <span class="highlight">"{{title}}"</span> has been <strong>updated</strong> by guide <span class="highlight">{{guideName}}</span>.
+      </p>
+      <p>
+        <strong>Destination:</strong> {{destination}} <br>
+        <strong>New Price:</strong> ${{price}}
+      </p>
+      <p>
+        You can review the updated details by clicking the button below:
+      </p>
+      <a class="btn" href="{{link}}" target="_blank">View Updated Tour</a>
+
+      <div class="footer">
+        <p>Journiq Admin Panel - Automated Notification</p>
+      </div>
+    </div>
+  </body>
+</html>

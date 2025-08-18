@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        background-color: #f9f9f9;
+        padding: 20px;
+      }
+      .email-container {
+        background: #ffffff;
+        border-radius: 8px;
+        padding: 20px;
+        max-width: 600px;
+        margin: auto;
+        box-shadow: 0px 2px 6px rgba(0,0,0,0.1);
+      }
+      .header {
+        background-color: #ff4d4d;
+        padding: 12px;
+        color: white;
+        border-radius: 8px 8px 0 0;
+        text-align: center;
+        font-size: 18px;
+        font-weight: bold;
+      }
+      .content {
+        padding: 15px;
+      }
+      .footer {
+        font-size: 12px;
+        color: #888;
+        text-align: center;
+        margin-top: 20px;
+      }
+      .highlight {
+        font-weight: bold;
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="email-container">
+      <div class="header">Booking Cancelled</div>
+      <div class="content">
+        <p>Hello <span class="highlight">{{guideName}}</span>,</p>
+        <p>
+          The traveller <span class="highlight">{{travellerName}}</span> has 
+          <strong>cancelled</strong> their booking for the tour
+          <span class="highlight">"{{tourTitle}}"</span>.
+        </p>
+        <p>
+          <b>Booking Date:</b> {{bookingDate}}
+        </p>
+        <p>Please update your schedule accordingly.</p>
+      </div>
+      <div class="footer">
+        &copy; {{year}} Journiq. All rights reserved.
+      </div>
+    </div>
+  </body>
+</html>

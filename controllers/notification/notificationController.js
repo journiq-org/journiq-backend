@@ -79,7 +79,7 @@ export const markAsRead = async (req, res, next) => {
     }
 
   } catch (err) {
-    next(err);
+    return next(new HttpError('Oops! Something went wrong',500))
   }
 };
 

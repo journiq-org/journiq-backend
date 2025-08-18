@@ -11,7 +11,7 @@ notificationRoute.use(userAuthCheck)
 notificationRoute.get('/allNotification', listAllNotifications)
 notificationRoute.get('/unread',viewUnreadNotifications)
 notificationRoute.patch('/markAsRead/:notificationId',markAsRead)
-notificationRoute.patch('markAllAsRead',markAllAsRead)
+notificationRoute.patch('/markAllAsRead',markAllAsRead)
 notificationRoute.patch('/deleteNotification/:id',deleteNotification)
 notificationRoute.patch('/deleteAll',deleteAllNotifications)
 
