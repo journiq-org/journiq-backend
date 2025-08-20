@@ -6,6 +6,9 @@ import { check ,body } from "express-validator";
 
 const destinationRoute = Router()
 
+destinationRoute.get('/viewAllDestination',getAlldestinations)
+destinationRoute.get('/:id/tours',getToursByDestination)
+
 destinationRoute.use(userAuthCheck)
 
 destinationRoute.post('/createDestination', upload.array('images',3),
@@ -49,7 +52,6 @@ destinationRoute.post('/createDestination', upload.array('images',3),
 
 ],createDestination)
 
-destinationRoute.get('/viewAllDestination',getAlldestinations)
 destinationRoute.get('/viewDestination/:id',getDestinationById)
 destinationRoute.patch('/updateDestination/:id',upload.array('images',3),
 [
@@ -101,7 +103,6 @@ destinationRoute.patch('/updateDestination/:id',upload.array('images',3),
 
 destinationRoute.get('/PopularDestination',getPopularDestinations)
 destinationRoute.patch('/deleteDestination/:id',deleteDestination)
-destinationRoute.get('/:id/tours',getToursByDestination)
 destinationRoute.patch('/:id/toggle-status', toggleDestinationStatus)
 
 

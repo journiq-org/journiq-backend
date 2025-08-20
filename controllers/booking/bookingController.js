@@ -1,9 +1,11 @@
-<<<<<<< Updated upstream
 import Booking from "../../models/Booking.js";
 import Review from "../../models/Review.js";
 import { updateTourRatings } from "../../utils/updateTourRatings.js";
 import HttpError from "../../middlewares/httpError.js";
 import Tour from "../../models/Tour.js";
+import Notification from '../../models/Notification.js'
+import transporter from '../../config/email.js';
+import User from '../../models/User.js'
 
 export const addExperienceToBooking = async (req, res, next) => {
   try {
@@ -51,14 +53,7 @@ export const addExperienceToBooking = async (req, res, next) => {
   }
 };
 
-=======
-import Booking from '../../models/Booking.js';
-import Tour from '../../models/Tour.js';
-import HttpError from '../../middlewares/httpError.js';
-import Notification from '../../models/Notification.js'
-import transporter from '../../config/email.js';
-import User from '../../models/User.js'
->>>>>>> Stashed changes
+
 
 export const updateAvailabilitySlots = (tour, bookingDate, numOfPeople) => {
   const bookingDateOnly = new Date(bookingDate).toISOString().split('T')[0];
@@ -178,7 +173,7 @@ export const getBookings = async (req, res, next) => {
 // Update Booking Status
 export const updateBookingStatus = async (req, res, next) => {
   try {
-    const { user_role } = req.user_data;
+    const { user_role , user_id} = req.user_data;
     const { id } = req.params;
     const { status } = req.body;
 
@@ -193,19 +188,22 @@ export const updateBookingStatus = async (req, res, next) => {
       return res.status(400).json({ message: "Invalid status provided" });
     }
 
+     // ✅ fetch the updater's info (name/email)
+    const updater = await User.findById(user_id).select("name email");
+
+
     const booking = await Booking.findByIdAndUpdate(
       id,
       { status },
       { new: true }
     ) 
     .populate("tour")
-    .populate("traveller", "name email")
-    .populate("guide", "name email");
+    .populate("user", "name email");
 
     if (!booking) return res.status(404).json({ message: "Booking not found" });
 
 
-        // Determine notification type and message based on status
+     // Determine notification type and message based on status
     let notifType, notifMessage, emailSubject, emailTemplate;
 
     switch (status) {
@@ -216,7 +214,7 @@ export const updateBookingStatus = async (req, res, next) => {
         emailTemplate = "bookingConfirmedNotification";
         break;
       case "completed":
-        notifType = "custom";
+        notifType = "booking_completed";
         notifMessage = `Your tour "${booking.tour.title}" has been completed.`;
         emailSubject = `Tour Completed: "${booking.tour.title}"`;
         emailTemplate = "bookingCompletedNotification";
@@ -228,15 +226,15 @@ export const updateBookingStatus = async (req, res, next) => {
         emailTemplate = "bookingCancelledNotification";
         break;
       default:
-        notifType = "custom";
+        notifType = "booking_updated";
         notifMessage = `Booking status for "${booking.tour.title}" has been updated to ${status}.`;
         emailSubject = `Booking Status Updated: "${booking.tour.title}"`;
         emailTemplate = "bookingStatusUpdatedNotification";
     }
 
-    // In-app notification to traveller
+    //  Create in-app notification
     await Notification.create({
-      recipient: booking.traveller._id,
+      recipient: booking.user._id,
       sender: user_id,
       type: notifType,
       message: notifMessage,
@@ -245,18 +243,23 @@ export const updateBookingStatus = async (req, res, next) => {
       isRead: false,
     });
 
-    // Email notification to traveller
+    //  Send email notification
     const mailOptions = {
       from: process.env.EMAIL_USER,
-      to: booking.traveller.email,
+      to: booking.user.email,
       subject: emailSubject,
-      template: emailTemplate, // Handlebars template filename
+      template: emailTemplate, // handlebars template
       context: {
-        travellerName: booking.traveller.name,
+        bookingId: booking._id,
+        travellerName: booking.user.name,
         tourTitle: booking.tour.title,
         bookingDate: booking.date,
-        guideName: booking.guide.name,
-        status: status,
+        guideName: updater?.name || "Guide/Admin", // ✅ fixed (no booking.guide)
+        status,
+        numOfPeople: booking.numOfPeople,
+        totalPrice: booking.totalPrice.toFixed(2), // optional formatting
+        supportLink: "https://yourdomain.com/support", // add if needed
+        year: new Date().getFullYear()
       },
     };
 
@@ -264,10 +267,9 @@ export const updateBookingStatus = async (req, res, next) => {
       if (error) {
         console.error(`Failed to send booking status update email:`, error);
       } else {
-        console.log(`Booking status update email sent to ${booking.traveller.email}: ${info.response}`);
+        console.log(`Booking status update email sent to ${booking.user.email}: ${info.response}`);
       }
     });
-
 
     res.status(200).json({
       message: "Booking status updated",
@@ -291,7 +293,7 @@ export const cancelBookingByUser = async (req, res, next) => {
 
     // Find the booking
     const booking = await Booking.findById(bookingId)
-    .populate("tour")
+    // .populate("tour")
       .populate({
         path: "tour",
         populate: { path: "guide", select: "name email" },
@@ -323,7 +325,7 @@ export const cancelBookingByUser = async (req, res, next) => {
         recipient: booking.tour.guide._id,
         sender: travellerId,
         type: "booking_cancelled",
-        message: `${travellerName} has cancelled their booking for your tour "${booking.tour.title}".`,
+        message: `${booking.user.name} has cancelled their booking for your tour "${booking.tour.title}".`,
         relatedBooking: booking._id,
         relatedTour: booking.tour._id,
         isRead: false,
@@ -337,7 +339,7 @@ export const cancelBookingByUser = async (req, res, next) => {
         template: "bookingCancelledByTravellerNotification", // Handlebars template file
         context: {
           guideName: booking.tour.guide.name,
-          travellerName: travellerName,
+          travellerName: booking.user.name,
           tourTitle: booking.tour.title,
           bookingDate: booking.date,
         },
@@ -367,31 +369,31 @@ export const cancelBookingByUser = async (req, res, next) => {
 
 // Respond to Booking by Guide (Accept or Reject)
 export const respondToBookingByGuide = async (req, res, next) => {
-  try {
-    const { bookingId } = req.params;
+ try {
+    const { bookingId } = req.params;   // correct param
     const { status } = req.body;
     const { user_id, user_role } = req.user_data;
 
-    // Only a guide can respond
     if (user_role !== "guide") {
       return next(new HttpError("Only guides can respond to bookings", 403));
     }
 
-    // Validate status
     const allowedStatuses = ["accepted", "rejected"];
     if (!allowedStatuses.includes(status)) {
       return next(new HttpError("Invalid status. Must be 'accepted' or 'rejected'.", 400));
     }
 
-    // Find booking and populate the tour
+    // Fetch guide info
+    const updater = await User.findById(user_id).select("name email");
+
+    // ✅ use bookingId here
     const booking = await Booking.findById(bookingId)
-     .populate("tour")
-     .populate("user", "name email"); // populate traveller
+      .populate("tour")
+      .populate("user", "name email");
 
     if (!booking) {
       return next(new HttpError("Booking not found", 404));
     }
-
     // Check if the current guide is the one assigned to the tour
     const tourGuideId = booking.tour?.guide?.toString();
     if (!tourGuideId || tourGuideId !== user_id) {
@@ -408,54 +410,61 @@ export const respondToBookingByGuide = async (req, res, next) => {
     await booking.save();
 
 
-    //  In-app notification
+// --- Notification & Email Setup ---
+    let notifType, notifMessage, emailSubject, emailTemplate;
+
+    if (status === "accepted") {
+      notifType = "booking_accepted";
+      notifMessage = `Your booking for "${booking.tour.title}" has been accepted by ${updater?.name || "the guide"}.`;
+      emailSubject = `Booking Accepted: "${booking.tour.title}"`;
+      emailTemplate = "bookingAcceptedNotification";
+    } else {
+      notifType = "booking_rejected";
+      notifMessage = `Your booking for "${booking.tour.title}" has been rejected by ${updater?.name || "the guide"}.`;
+      emailSubject = `Booking Rejected: "${booking.tour.title}"`;
+      emailTemplate = "bookingRejectedNotification";
+    }
+
+    // Create in-app notification
     await Notification.create({
       recipient: booking.user._id,
       sender: user_id,
-      type: "booking_" + status, // booking_accepted / booking_rejected
-      message: `Your booking for "${booking.tour.title}" was ${status} by the guide.`,
-      link: `/bookings/${booking._id}`,
+      type: notifType,
+      message: notifMessage,
       relatedBooking: booking._id,
       relatedTour: booking.tour._id,
+      isRead: false,
     });
 
-    //  Email notification
-
-    // Load handlebars template
-    const __dirname = path.resolve(); // ES modules
-    const templatePath = path.join(
-      __dirname,
-      "templates",
-      "bookingResponse.hbs"
-    );
-    const source = fs.readFileSync(templatePath, "utf8");
-    const template = handlebars.compile(source);
-
-    const emailHtml = template({
-      travellerName: booking.user.name,
-      guideName: req.user_data.name || "Guide",
-      tourTitle: booking.tour.title,
-      status: status,
-      bookingLink: `https://yourfrontend.com/bookings/${booking._id}`,
-    });
-
-    // Nodemailer transporter
-    const transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      port: process.env.MAIL_PORT,
-      auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
-      },
-    });
-
-    await transporter.sendMail({
-      from: `"Journiq" <${process.env.MAIL_USER}>`,
+    // Send email notification
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
       to: booking.user.email,
-      subject: `Your booking was ${status}`,
-      html: emailHtml,
-    });
+      subject: emailSubject,
+      template: emailTemplate, // handlebars template
+      context: {
+        bookingId: booking._id,
+        travellerName: booking.user.name,
+        tourTitle: booking.tour.title,
+        bookingDate: booking.date,
+        guideName: updater?.name || "Guide",
+        status,
+        numOfPeople: booking.numOfPeople,
+        totalPrice: booking.totalPrice.toFixed(2),
+        supportLink: "https://yourdomain.com/support",
+        year: new Date().getFullYear(),
+      },
+    };
 
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error(`Failed to send booking response email:`, error);
+      } else {
+        console.log(
+          `Booking response email sent to ${booking.user.email}: ${info.response}`
+        );
+      }
+    });
 
 
     return res.status(200).json({

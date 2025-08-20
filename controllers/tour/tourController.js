@@ -688,26 +688,26 @@ export const getPublicToursByGuide = async (req, res, next) => {
 };
 
 //get all tours by destination
-export const getAllTourByDestination = async (req, res, next) => {
-    try{
-         const {id} = req.params
+// export const getAllTourByDestination = async (req, res, next) => {
+//     try{
+//          const {id} = req.params
 
-         const tours = await Tour.find({is_deleted: false, destination: id, isActive: true,})
-         .populate('destination', 'name')
-         .populate('guide','name email')
+//          const tours = await Tour.find({is_deleted: false, destination: id, isActive: true,})
+//          .populate('destination', 'name')
+//          .populate('guide','name email')
 
-         if(tours){
-            res.status(200).json({
-                status: true,
-                message:null,
-                data: tours
-            })
-         }
-    }catch(err){
-        console.error("get all tour by destination error",err)
-        return next(new HttpError('Oops! Something went wrong', 500))
-    }
-}
+//          if(tours){
+//             res.status(200).json({
+//                 status: true,
+//                 message:null,
+//                 data: tours
+//             })
+//          }
+//     }catch(err){
+//         console.error("get all tour by destination error",err)
+//         return next(new HttpError('Oops! Something went wrong', 500))
+//     }
+// }
 
 
 //list for public without authentication

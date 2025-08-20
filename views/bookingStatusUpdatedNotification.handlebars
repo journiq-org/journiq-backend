@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Booking Status Updated</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f6f9fc;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 600px;
+        margin: 40px auto;
+        background: #ffffff;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        text-align: center;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 15px;
+        margin-bottom: 25px;
+      }
+      .header h2 {
+        margin: 0;
+        color: #333;
+      }
+      .status-badge {
+        display: inline-block;
+        padding: 10px 18px;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: bold;
+        margin: 10px 0;
+        background-color: {{#if (eq status "Confirmed")}}#28a745{{else if (eq status "Cancelled")}}#dc3545{{else}}#ffc107{{/if}};
+        color: #fff;
+      }
+      .details {
+        margin: 20px 0;
+      }
+      .details p {
+        margin: 6px 0;
+        font-size: 15px;
+        color: #444;
+      }
+      .footer {
+        text-align: center;
+        font-size: 13px;
+        color: #888;
+        margin-top: 30px;
+      }
+      .btn {
+        display: inline-block;
+        padding: 12px 20px;
+        margin-top: 20px;
+        background-color: #007bff;
+        color: #fff !important;
+        text-decoration: none;
+        border-radius: 8px;
+        font-weight: bold;
+      }
+      .btn:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <!-- Header -->
+      <div class="header">
+        <h2>Booking Status Update</h2>
+      </div>
+
+      <!-- Greeting -->
+      <p>Hello {{customerName}},</p>
+
+      <!-- Status Badge -->
+      <p>Your booking status has been updated to:</p>
+      <div class="status-badge">
+        {{status}}
+      </div>
+
+      <!-- Booking Details -->
+      <div class="details">
+        <p><strong>Booking ID:</strong> {{bookingId}}</p>
+        <p><strong>Service:</strong> {{serviceName}}</p>
+        <p><strong>Date:</strong> {{bookingDate}}</p>
+        <p><strong>Time:</strong> {{bookingTime}}</p>
+        <p><strong>Location:</strong> {{location}}</p>
+      </div>
+
+      <!-- CTA -->
+      <div style="text-align:center;">
+        <a href="{{bookingLink}}" class="btn">View Booking</a>
+      </div>
+
+      <!-- Footer -->
+      <div class="footer">
+        <p>Thank you for choosing us.</p>
+        <p>&copy; {{year}} Your Company Name</p>
+      </div>
+    </div>
+  </body>
+</html>

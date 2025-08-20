@@ -19,11 +19,7 @@ bookingRoute.patch('/update-status/:id', updateBookingStatus);
 bookingRoute.patch('/cancel/:bookingId', cancelBookingByUser); 
 
  // Guide responds to booking
-<<<<<<< Updated upstream
-bookingRoute.put('/guide/update-status/:bookingId', respondToBookingByGuide);
-=======
-bookingRoute.patch('/guide/update-status/:id', respondToBookingByGuide);
->>>>>>> Stashed changes
+bookingRoute.patch('/guide/update-status/:bookingId', respondToBookingByGuide);
 
 // Admin deletes booking
 bookingRoute.patch('/admin/delete-booking/:bookingId', deleteBooking); 

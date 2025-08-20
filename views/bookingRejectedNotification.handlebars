@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Booking Rejected</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f8f9fa;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 20px auto;
+      background: #ffffff;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .header {
+      text-align: center;
+      padding-bottom: 16px;
+      border-bottom: 2px solid #e53935;
+    }
+    .header h2 {
+      color: #e53935;
+      margin: 0;
+    }
+    .content {
+      margin-top: 20px;
+      color: #333;
+    }
+    .details {
+      background: #fef2f2;
+      border-left: 4px solid #e53935;
+      padding: 12px;
+      margin: 16px 0;
+      border-radius: 6px;
+    }
+    .footer {
+      margin-top: 20px;
+      text-align: center;
+      color: #777;
+      font-size: 12px;
+    }
+    .btn {
+      display: inline-block;
+      background: #e53935;
+      color: #fff;
+      padding: 12px 20px;
+      border-radius: 6px;
+      text-decoration: none;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Booking Rejected ❌</h2>
+    </div>
+    <div class="content">
+      <p>Hi {{travellerName}},</p>
+      <p>We regret to inform you that your booking has been <strong>rejected</strong>.</p>
+
+        <div class="details">
+            <p><strong>Booking ID:</strong> {{bookingId}}</p>
+            <p><strong>Date:</strong> {{bookingDate}}</p>
+            <p><strong>Travellers:</strong> {{numOfPeople}}</p>
+            <p><strong>Tour:</strong> {{tourTitle}}</p>
+            <p><strong>Total Price:</strong> ${{totalPrice}}</p>
+        </div>
+
+      <p>If you’d like, you can try rescheduling or contact our support team for assistance.</p>
+      <a href="{{supportUrl}}" class="btn">Contact Support</a>
+    </div>
+    <div class="footer">
+      <p>We hope to serve you better next time.  
+      — {{companyName}}</p>
+    </div>
+  </div>
+</body>
+</html>
