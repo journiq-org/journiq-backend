@@ -10,6 +10,7 @@ import bookingRoute from './routes/booking/bookingRoute.js'
 import guideRoute from './routes/guide/guideRoutes.js'
 import reviewRoute from './routes/review/reviewRoute.js'
 import notificationRoute from './routes/notification/notificationRoutes.js'
+import cookieParser from 'cookie-parser'
 
 
 dotenv.config()
@@ -20,9 +21,14 @@ const app = express()
 
 connectDB()
 
+app.use(cors({
+  origin: "http://localhost:3000", // your frontend URL
+  credentials: true               // allow cookies
+}))
 app.use(express.json()) 
-app.use(cors())
+app.use(cookieParser())
 
+//routes
 app.use('/api/users', userRoute)
 app.use('/api/tour',tourRoute)
 app.use('/api/destination',destinationRoute)
