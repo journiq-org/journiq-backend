@@ -1,6 +1,6 @@
 import { Router } from "express";
 import userAuthCheck from "../../middlewares/userAuthCheck.js";
-import { createTour, deleteTour, getAllTour,  getAllToursPublic, getPublicToursByGuide, toggleTourActiveStatus, updateTour, viewTour } from "../../controllers/tour/tourController.js";
+import { createTour, deleteTour, getAllTour,  getAllToursPublic, getPublicToursByGuide, publicViewTour, toggleTourActiveStatus, updateTour, viewTour } from "../../controllers/tour/tourController.js";
 import upload from "../../middlewares/fileUpload.js";
 import { check } from "express-validator";
 import { getToursByDestination } from "../../controllers/destination/destinationController.js";
@@ -8,11 +8,12 @@ import { getToursByDestination } from "../../controllers/destination/destination
 const tourRoute = Router()
 
 tourRoute.get('/publicView',getAllToursPublic)
+tourRoute.get('/publicViewTourDetails/:id', publicViewTour)
 
 //auth check middleware
 tourRoute.use(userAuthCheck)
 
-tourRoute.post('/createtour',upload.array('images',3),
+tourRoute.post('/createtour',upload.array('images',6),
 [
   check('title')
         .notEmpty().withMessage('Title is required')
@@ -102,7 +103,7 @@ tourRoute.get('/viewAll',getAllTour)
 // tourRoute.get('/allTourByDestination/:id',getAllTourByDestination)
 tourRoute.get('/guide/:id',getPublicToursByGuide)
 tourRoute.get('/viewtour/:id', viewTour)
-tourRoute.patch('/update/:id',upload.array('images',3),
+tourRoute.patch('/update/:id',upload.array('images',6),
 [
   check("title").optional().isString().withMessage("Title must be a string"),
   check("description").optional().isString().withMessage("Description must be a string"),

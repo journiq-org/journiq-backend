@@ -416,6 +416,31 @@ export const viewTour = async (req, res, next) => {
     }
 }
 
+//get single tour public
+export const publicViewTour = async( req, res, next) => {
+    try{
+
+        const id = req.params.id
+
+        const tour = await Tour.findOne({_id:id, is_deleted:false, isActive:true, isBlocked: false})
+        .populate({ path: 'guide', select: 'name' })
+        .populate('destination', 'name');
+
+        if(!tour){
+            return next(new HttpError('Tour not found', 404))
+        }else{
+            res.status(200).json({
+                status:true,
+                data: tour,
+                message: null
+            })
+        }
+
+    }catch(err){
+        return next(new HttpError('Oops! Something went wrong',500))
+    }
+}
+
 // toggle tour active status for temporarily disabling a tour , ROUTE IS IN GUIDEROUTE
 export const toggleTourActiveStatus = async (req,res,next) => {
     try{
