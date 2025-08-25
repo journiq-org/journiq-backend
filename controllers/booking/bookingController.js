@@ -7,6 +7,8 @@ import Notification from '../../models/Notification.js'
 import transporter from '../../config/email.js';
 import User from '../../models/User.js'
 
+
+
 export const addExperienceToBooking = async (req, res, next) => {
   try {
     const { bookingId } = req.params;

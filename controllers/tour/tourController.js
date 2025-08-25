@@ -712,7 +712,7 @@ export const getPublicToursByGuide = async (req, res, next) => {
   }
 };
 
-//get all tours by destination
+//get all tours by destination - done this function destination controller
 // export const getAllTourByDestination = async (req, res, next) => {
 //     try{
 //          const {id} = req.params
