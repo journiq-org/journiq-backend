@@ -282,6 +282,38 @@ export const updateBookingStatus = async (req, res, next) => {
   }
 };
 
+// GET /api/bookings/for-guide
+export const getGuideBookings = async (req, res, next) => {
+  try {
+    const { user_id, user_role } = req.user_data;
+
+    if (!["guide", "admin"].includes(user_role)) {
+      return next(new HttpError("Unauthorized access", 403));
+    }
+
+    // Fetch bookings where the guide of the tour matches this guide
+    const bookings = await Booking.find({ isDeleted: false })
+      .populate({
+        path: "tour",
+        match: { guide: user_id }, // only tours created by this guide
+      })
+      .populate("user", "name email");
+
+    // Remove bookings where the tour didn't match (null after populate)
+    const filteredBookings = bookings.filter(b => b.tour);
+
+    if (filteredBookings.length === 0) {
+      return res.status(404).json({ message: "No bookings found" });
+    }
+
+    res.status(200).json({ bookings: filteredBookings });
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+
 // Cancel Booking by Traveller
 export const cancelBookingByUser = async (req, res, next) => {
   try {
@@ -515,7 +547,7 @@ export const deleteBooking = async (req, res, next) => {
 // Check the Availability
 export const checkAvailability = async (req, res, next) => {
   try {
-    const { date, tourId } = req.query;
+    const { date, tourId, people } = req.query; // include number of people
 
     if (!date || !tourId) {
       return next(new HttpError("Date and Tour ID are required", 400));
@@ -530,7 +562,15 @@ export const checkAvailability = async (req, res, next) => {
     });
 
     if (!availability || availability.slots <= 0) {
-      return res.status(200).json({ available: false });
+      return res.status(200).json({ available: false, message: "No slots available" });
+    }
+
+    // Check if requested people exceed available slots
+    if (people && Number(people) > availability.slots) {
+      return res.status(200).json({
+        available: false,
+        message: `Only ${availability.slots} slots left, but you requested ${people}`,
+      });
     }
 
     res.status(200).json({ available: true, slots: availability.slots });
@@ -539,3 +579,62 @@ export const checkAvailability = async (req, res, next) => {
   }
 };
 
+// get all booking for admin only
+// export const getAllBookings = async (req, res, next) => {
+//   if (req.method === "OPTIONS") return next();
+
+//   try {
+//     const { user_role } = req.user_data;
+
+//     // Only admin can access
+//     if (user_role !== "admin") {
+//       return next(new HttpError("Unauthorized access", 403));
+//     }
+
+//     // Fetch all non-deleted bookings
+//     const bookings = await Booking.find({ isDeleted: false })
+//       .sort({ date: -1 }) // latest bookings first
+//       .populate("tour", "title date price guide")
+//       .populate("user", "name email");
+
+//     if (!bookings || bookings.length === 0) {
+//       return next(new HttpError("No bookings found", 404));
+//     }
+
+//     // Success
+//     res.status(200).json({ bookings });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+
+
+// GET /api/bookings/get-all-booking (Admin only)
+export const getAllBookings = async (req, res, next) => {
+  try {
+    const { user_id, user_role } = req.user_data;
+
+    // Only admin can access
+    if (user_role !== "admin") {
+      return next(new HttpError("Unauthorized access", 403));
+    }
+
+    // Fetch all non-deleted bookings
+    const bookings = await Booking.find({ isDeleted: false })
+      .sort({ date: -1 }) // latest bookings first
+      .populate("tour", "title date price guide") // populate tour info
+      .populate("user", "name email"); // populate traveller info
+
+    if (!bookings || bookings.length === 0) {
+      return next(new HttpError("No bookings found", 404));
+    }
+
+    res.status(200).json({
+      message: "Bookings fetched successfully",
+      bookings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

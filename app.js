@@ -24,11 +24,7 @@ app.use(cors({
   origin: "http://localhost:3000", // your frontend URL
   credentials: true               // allow cookies
 }))
-<<<<<<< Updated upstream
 app.use('/uploads', express.static('uploads'));
-=======
-app.use('/uploads',express.static('uploads'))
->>>>>>> Stashed changes
 app.use(express.json()) 
 app.use(cookieParser())
 
