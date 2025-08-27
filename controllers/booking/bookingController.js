@@ -611,30 +611,56 @@ export const checkAvailability = async (req, res, next) => {
 
 
 // GET /api/bookings/get-all-booking (Admin only)
-export const getAllBookings = async (req, res, next) => {
-  try {
-    const { user_id, user_role } = req.user_data;
+// export const getAllBookings = async (req, res, next) => {
+//   try {
+//     const { user_id, user_role } = req.user_data;
 
-    // Only admin can access
-    if (user_role !== "admin") {
-      return next(new HttpError("Unauthorized access", 403));
+//     // Only admin can access
+//     if (user_role !== "admin") {
+//       return next(new HttpError("Unauthorized access", 403));
+//     }
+
+//     // Fetch all non-deleted bookings
+//     const bookings = await Booking.find({ isDeleted: false })
+//       .sort({ date: -1 }) // latest bookings first
+//       .populate("tour", "title date price guide") // populate tour info
+//       .populate("user", "name email"); // populate traveller info
+
+//     if (!bookings || bookings.length === 0) {
+//       return next(new HttpError("No bookings found", 404));
+//     }
+
+//     res.status(200).json({
+//       message: "Bookings fetched successfully",
+//       bookings,
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
+
+
+
+
+export const getBookingsByTourId = async (req, res, next) => {
+    try {
+        const { tourId } = req.params;
+        const { user_role: tokenRole } = req.user_data;
+
+        // Only admin can access this
+        if (tokenRole !== 'admin') {
+            return next(new HttpError("Only admin can access bookings by tour", 403));
+        }
+
+        // Find bookings for the given tour ID
+        const bookings = await Booking.find({ tour: tourId, isDeleted: false }).populate("user", "name email");
+
+        if (!bookings || bookings.length === 0) {
+            return res.status(404).json({ message: "No bookings found for this tour" });
+        }
+
+        res.status(200).json({ bookings });
+    } catch (error) {
+        next(error);
     }
-
-    // Fetch all non-deleted bookings
-    const bookings = await Booking.find({ isDeleted: false })
-      .sort({ date: -1 }) // latest bookings first
-      .populate("tour", "title date price guide") // populate tour info
-      .populate("user", "name email"); // populate traveller info
-
-    if (!bookings || bookings.length === 0) {
-      return next(new HttpError("No bookings found", 404));
-    }
-
-    res.status(200).json({
-      message: "Bookings fetched successfully",
-      bookings,
-    });
-  } catch (error) {
-    next(error);
-  }
 };
