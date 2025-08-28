@@ -16,26 +16,88 @@ import Notification from "../../models/Notification.js"
 //create tour
 export const createTour = async (req,res,next) => {
     try{
+        console.log("Incoming tour create:", req.body, req.files);
+
+
         const errors = validationResult(req)
         if(!errors.isEmpty()){
             return next(new HttpError("Validation Error: " + errors.array()[0].msg, 422))
         }else{
 
-            const{
-                title,
-                description, 
-                itinerary,
-                duration,
-                highlights,
-                price,
-                availability,
-                included,
-                excluded,
-                meetingPoint,
-                category,
-                rating,
-                destination
-            } = req.body
+             // Parse arrays safely
+            let itinerary = [];
+            let highlights = [];
+            let included = [];
+            let excluded = [];
+            let availability = [];
+
+            try {
+            itinerary = req.body.itinerary ? JSON.parse(req.body.itinerary) : [];
+            highlights = req.body.highlights ? JSON.parse(req.body.highlights) : [];
+            included = req.body.included ? JSON.parse(req.body.included) : [];
+            excluded = req.body.excluded ? JSON.parse(req.body.excluded) : [];
+            availability = req.body.availability ? JSON.parse(req.body.availability) : [];
+            } catch (err) {
+            console.error("JSON parse error:", err.message);
+            return next(new HttpError("Invalid array data format", 400));
+            }
+
+            // Strings
+            const {
+            title,
+            description,
+            duration,
+            price,
+            meetingPoint,
+            category,
+            rating,
+            destination,
+            } = req.body;
+
+
+            // const{
+            //     title,
+            //     description, 
+            //     itinerary,
+            //     duration,
+            //     highlights,
+            //     price,
+            //     availability,
+            //     included,
+            //     excluded,
+            //     meetingPoint,
+            //     category,
+            //     rating,
+            //     destination
+            // } = req.body
+
+
+
+
+             // Convert strings back to arrays
+            if (typeof itinerary === "string") {
+                try { itinerary = JSON.parse(itinerary) } catch { itinerary = [itinerary] }
+            }
+            if (typeof highlights === "string") {
+                try { highlights = JSON.parse(highlights) } catch { highlights = [highlights] }
+            }
+            if (typeof included === "string") {
+                try { included = JSON.parse(included) } catch { included = [included] }
+            }
+            if (typeof excluded === "string") {
+                try { excluded = JSON.parse(excluded) } catch { excluded = [excluded] }
+            }
+            if (typeof availability === "string") {
+                try { availability = JSON.parse(availability) } catch { availability = [] }
+            }
+
+            // If availability[] came as array of JSON strings (most common case with FormData)
+            if (Array.isArray(availability)) {
+                availability = availability.map(item => 
+                    typeof item === "string" ? JSON.parse(item) : item
+                )
+            }
+
 
             const imagePaths = req.files ? req.files.map(file => file.path) : []
 
@@ -205,33 +267,97 @@ export const updateTour = async (req,res,next) => {
                      return next(new HttpError("Your guide profile is not verified yet", 403))
                 }else{
 
+
+                     // Fetch current tour
+                    const currentTour = await Tour.findById(id);
+                    if (!currentTour) return next(new HttpError("Tour not found", 404));
+
+
+                // ---- Helper to parse arrays ----
+                    const parseArrayField = (field, fallback = []) => {
+                    if (!field) return fallback;
+                    if (Array.isArray(field)) return field;
+                    return [field];
+                    };
+
+                    const parsedItinerary = parseArrayField(itinerary, currentTour.itinerary);
+                    const parsedHighlights = parseArrayField(highlights, currentTour.highlights);
+                    const parsedIncluded = parseArrayField(included, currentTour.included);
+                    const parsedExcluded = parseArrayField(excluded, currentTour.excluded);
+
+
+                   // ---- Availability Handling ----
+                    let parsedAvailability = [];
+                    if (Array.isArray(availability)) {
+                        parsedAvailability = availability.map(item => ({
+                            date: item.date,
+                            slots: Number(item.slots)
+                        }));
+                    } else if (availability && typeof availability === "object") {
+                        parsedAvailability = [{
+                            date: availability.date,
+                            slots: Number(availability.slots)
+                        }];
+                    }
+
+                    // fallback to existing if nothing new
+                    let finalAvailability = parsedAvailability.length > 0
+                        ? parsedAvailability
+                        : currentTour.availability;
+
+                    console.log("Raw body:", req.body);
+                    console.log("Parsed availability:", parsedAvailability);
+
+
+                    // ---- Images Handling ----
+                    let updatedImages = currentTour.images;
+
+                    // 1. Keep only the existingImages[] sent from frontend
+                    if (req.body.existingImages) {
+                    updatedImages = Array.isArray(req.body.existingImages)
+                        ? req.body.existingImages
+                        : [req.body.existingImages];
+                    }
+
+                    // 2. Add new uploaded files
+                    if (req.files && req.files.length > 0) {
+                    updatedImages = [
+                        ...updatedImages,
+                        ...req.files.map((file) => file.path),
+                    ];
+                    }
+
+
+                    // ---- Build update object ----
+
                     const update = {
                         title : title,
                         description : description,
-                        itinerary : itinerary,
+                        itinerary : parsedItinerary,
                         duration : duration,
-                        highlights : highlights,
+                        highlights : parsedHighlights,
                         price : price,
-                        availability : availability,
-                        included : included,
-                        excluded : excluded,
+                        availability : finalAvailability,
+                        included : parsedIncluded,
+                        excluded : parsedExcluded,
                         meetingPoint : meetingPoint,
                         category : category,
                         rating : rating,
-                        destination : destination,                    
+                        destination : destination, 
+                         images: updatedImages,                   
                     }
     
                     // if(imagePath){
                     //     update.images = imagePath
                     // }
                     // if images uploaded, set them (replace)
-                    if (req.files && req.files.length > 0) {
-                    update.images = req.files.map(f => f.path);
-                    }
+                    // if (req.files && req.files.length > 0) {
+                    // update.images = req.files.map(f => f.path);
+                    // }
     
-                    const imagePath = req.files && req.files.length > 0 
-                    ? req.files.map(file => file.path) 
-                    : []   
+                    // const imagePath = req.files && req.files.length > 0 
+                    // ? req.files.map(file => file.path) 
+                    // : []   
     
                     const updatedTour = await Tour.findOneAndUpdate(
                         {_id:id, is_deleted:false,guide:guideId},
@@ -393,12 +519,12 @@ export const viewTour = async (req, res, next) => {
         if( tokenRole === "guide" ){
             tour = await Tour.findOne({_id:id, guide:guideId, is_deleted:false,isBlocked:false})
             .populate({ path: 'guide', select: 'name email' })
-            .populate('destination', 'name');
+            .populate('destination', 'name country');
         }
         else{
             tour = await Tour.findOne({_id:id , is_deleted:false, isBlocked: false, isActive: true})
             .populate({ path: 'guide', select: 'name' })
-           .populate('destination', 'name');
+           .populate('destination', 'name country');
         }
 
         if(!tour){
@@ -441,7 +567,7 @@ export const publicViewTour = async( req, res, next) => {
     }
 }
 
-// toggle tour active status for temporarily disabling a tour , ROUTE IS IN GUIDEROUTE
+// toggle tour active status for temporarily disabling a tour 
 export const toggleTourActiveStatus = async (req,res,next) => {
     try{
 
@@ -739,6 +865,7 @@ export const getPublicToursByGuide = async (req, res, next) => {
 
 export const getAllToursPublic = async (req, res, next) => {
     try {
+
         const { 
             destination, 
             title, 
@@ -752,6 +879,10 @@ export const getAllToursPublic = async (req, res, next) => {
             popular 
         } = req.query;
 
+
+        const { id } = req.params;
+
+
         // Public query — only active and not deleted/blocked
         let query = { 
             is_deleted: false, 
@@ -759,10 +890,15 @@ export const getAllToursPublic = async (req, res, next) => {
             isActive: true 
         };
 
-        // Destination filter
-        if (destination && mongoose.Types.ObjectId.isValid(destination)) {
+         // Destination from params (/tours/destination/:id)
+            if (id && mongoose.Types.ObjectId.isValid(id)) {
+            query.destination = id;
+            }
+
+            // Destination from query (?destination=)
+            if (destination && mongoose.Types.ObjectId.isValid(destination)) {
             query.destination = destination;
-        }
+            }
 
         // Title search
         if (title) {

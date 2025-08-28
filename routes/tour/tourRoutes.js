@@ -7,7 +7,7 @@ import { getToursByDestination } from "../../controllers/destination/destination
 
 const tourRoute = Router()
 
-tourRoute.get('/publicView',getAllToursPublic)
+tourRoute.get('/publicView/:id',getAllToursPublic)
 tourRoute.get('/publicViewTourDetails/:id', publicViewTour)
 
 //auth check middleware
@@ -107,23 +107,37 @@ tourRoute.patch('/update/:id',upload.array('images',6),
 [
   check("title").optional().isString().withMessage("Title must be a string"),
   check("description").optional().isString().withMessage("Description must be a string"),
-  check("itinerary").optional().isString().withMessage("Itinerary must be a string"),
+  check("itinerary").optional(),
+  // .isString().withMessage("Itinerary must be a string"),
   check("duration")
     .optional()
     .isInt({ min: 1 })
     .withMessage("Duration must be a positive integer"),
-  check("highlights").optional().isArray().withMessage("Highlights must be an array"),
+  check("highlights").optional(),
+  // .isArray().withMessage("Highlights must be an array"),
   check("price")
     .optional()
     .isFloat({ min: 0 })
     .withMessage("Price must be a non-negative number"),
-  check("availability").optional().isArray().withMessage("Availability must be an array"),
-  check("included").optional().isArray().withMessage("Included must be an array"),
-  check("excluded").optional().isArray().withMessage("Excluded must be an array"),
+  // check("availability").optional(),
+  // .isArray().withMessage("Availability must be an array"),
+  check("included").optional(),
+  // .isArray().withMessage("Included must be an array"),
+  check("excluded").optional(),
+  // .isArray().withMessage("Excluded must be an array"),
   check("meetingPoint").optional().isString().withMessage("Meeting point must be a string"),
   check("category")
     .optional()
-    .isIn(["adventure", "cultural", "nature", "wildlife", "other"]) // adjust enum as per your model
+    .isIn([ "Adventure",
+        "Cultural",
+        "Nature",
+        "Food & Drink",
+        "Wildlife",
+        "Historical",
+        "Beach",
+        "Urban",
+        "Religious",
+        "Others",]) // adjust enum as per your model
     .withMessage("Invalid category"),
   check("rating")
     .optional()

@@ -395,7 +395,7 @@ export const getPopularDestinations = async (req, res, next) => {
 };
 
 
-//get tours by destination --- done in tourcontroller
+//get tours by destination --- done in tourcontroller and that is been used
 export const getToursByDestination = async(req,res, next) => {
     try{
 
