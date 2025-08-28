@@ -1,33 +1,41 @@
 import mongoose from "mongoose";
 
-const reviewSchema = new mongoose.Schema({
-  tour: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Tour",
-    required: true,
+const reviewSchema = new mongoose.Schema(
+  {
+    tour: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tour",
+      required: true,
+    },
+    booking: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Booking", // ✅ connect back to booking
+      required: true,
+    },
+    user: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    experience: {
+      serviceQuality: { type: Number, min: 1, max: 5, required: true },
+      punctuality: { type: Number, min: 1, max: 5, required: true },
+      satisfactionSurvey: { type: Number, min: 1, max: 5, required: true },
+    },
+    comment: {
+      type: String,
+      trim: true,
+      maxlength: 1000,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  experience: {
-    serviceQuality: { type: Number, min: 1, max: 5, required: true },
-    punctuality: { type: Number, min: 1, max: 5, required: true },
-    satisfactionSurvey: { type: Number, min: 1, max: 5, required: true },
-  },
-  comment: {
-    type: String,
-    trim: true,
-    maxlength: 1000,
-  },
-  isDeleted: {
-    type: Boolean,
-    default: false,
-  },
-}, { timestamps: true });
+  { timestamps: true }
+);
 
-// Static method to update tour ratings
+// 🔹 Update Tour Ratings (no change)
 reviewSchema.statics.updateTourRatings = async function (tourId) {
   const stats = await this.aggregate([
     { $match: { tour: tourId, isDeleted: false } },

@@ -160,7 +160,12 @@ export const getBookings = async (req, res, next) => {
         if(tokenRole !== 'traveller') {
             return next(new HttpError("Only traveller can access their bookings", 403));
             }else{
-            const bookings = await Booking.find({user: travellerId,isDeleted:false}).populate("tour");
+            // const bookings = await Booking.find({user: travellerId,isDeleted:false}).populate("tour");
+
+            const bookings = await Booking.find({ user: travellerId, isDeleted: false })
+            .populate("tour", "title description")
+            .populate("review"); // ✅
+
 
             if(!bookings || bookings.length === 0) {
                 return res.status(404).json({ message: "No bookings found" });
