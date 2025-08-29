@@ -9,6 +9,7 @@ import adminRoute from './routes/admin/adminRoutes.js'
 import bookingRoute from './routes/booking/bookingRoute.js'
 import reviewRoute from './routes/review/reviewRoute.js'
 import notificationRoute from './routes/notification/notificationRoutes.js'
+import messageRoutes from "./routes/message/messageRoute.js";
 import cookieParser from 'cookie-parser'
 
 
@@ -36,6 +37,7 @@ app.use('/api/admin',adminRoute)
 app.use('/api/booking',bookingRoute)
 app.use('/api/review', reviewRoute)
 app.use('/api/notification',notificationRoute)
+app.use("/api/messages", messageRoutes);
 
 // app.use((error, req, res, next) => {
 //   res.status(error.code || 500).json({

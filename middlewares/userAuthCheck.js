@@ -8,10 +8,10 @@ const userAuthCheck = async (req, res, next) => {
         return next()
     }
     try{
-        // const token = req.headers.authorization.split(" ")[1]
+        const token = req.headers.authorization.split(" ")[1]
 
         // ✅ check for token from cookies
-        const token = req.cookies?.token;
+        // const token = req.cookies?.token;
 
         if(!token){
             return next(new HttpError('You must be logged in to access this route',403))
