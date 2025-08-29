@@ -30,48 +30,118 @@ tourRoute.post('/createtour',upload.array('images',6),
     .notEmpty().withMessage("Duration is required")
     .isInt({ min: 1 }).withMessage("Duration must be a positive integer"),
 
-  check("highlights")
-    .optional()
-    .isArray().withMessage("Highlights must be an array of strings"),
-
+  
   check("price")
     .notEmpty().withMessage("Price is required")
     .isFloat({ min: 0 }).withMessage("Price must be a non-negative number"),
 
-  check("availability")
-  .isArray({ min: 1 }).withMessage("Availability must be a non-empty array")
+ // In your tour route validation
+check("highlights")
+  .optional()
   .custom((value) => {
-    for (let slot of value) {
-      if (!slot.date || slot.slots == null) {
-        throw new Error("Each availability item must include 'date' and 'slots'");
+    if (!value) return true; // Allow empty
+    
+    // Try to parse as JSON if it's a string
+    let parsed;
+    if (typeof value === 'string') {
+      try {
+        parsed = JSON.parse(value);
+      } catch (err) {
+        throw new Error("Highlights must be a valid JSON array or array");
       }
-
-      // Validate date
-      if (isNaN(Date.parse(slot.date))) {
-        throw new Error("Invalid date format in availability");
-      }
-
-      // Convert to number (handles "12" and 12)
-      const slots = Number(slot.slots);
-
-      if (isNaN(slots) || slots <= 0) {
-        throw new Error("Slots must be a positive number");
-      }
-
-      // Optional: you can even rewrite it to make sure it's a number in req.body
-      slot.slots = slots;
+    } else {
+      parsed = value;
     }
-
+    
+    if (!Array.isArray(parsed)) {
+      throw new Error("Highlights must be an array");
+    }
+    
     return true;
   }),
 
-  check("included")
-    .optional()
-    .isArray().withMessage("Included must be an array of strings"),
+check("included")
+  .optional()
+  .custom((value) => {
+    if (!value) return true;
+    
+    let parsed;
+    if (typeof value === 'string') {
+      try {
+        parsed = JSON.parse(value);
+      } catch (err) {
+        throw new Error("Included must be a valid JSON array or array");
+      }
+    } else {
+      parsed = value;
+    }
+    
+    if (!Array.isArray(parsed)) {
+      throw new Error("Included must be an array");
+    }
+    
+    return true;
+  }),
 
-  check("excluded")
-    .optional()
-    .isArray().withMessage("Excluded must be an array of strings"),
+check("excluded")
+  .optional()
+  .custom((value) => {
+    if (!value) return true;
+    
+    let parsed;
+    if (typeof value === 'string') {
+      try {
+        parsed = JSON.parse(value);
+      } catch (err) {
+        throw new Error("Excluded must be a valid JSON array or array");
+      }
+    } else {
+      parsed = value;
+    }
+    
+    if (!Array.isArray(parsed)) {
+      throw new Error("Excluded must be an array");
+    }
+    
+    return true;
+  }),
+
+check("availability")
+  .custom((value) => {
+    if (!value) throw new Error("Availability is required");
+    
+    let parsed;
+    if (typeof value === 'string') {
+      try {
+        parsed = JSON.parse(value);
+      } catch (err) {
+        throw new Error("Availability must be a valid JSON array");
+      }
+    } else {
+      parsed = value;
+    }
+    
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      throw new Error("Availability must be a non-empty array");
+    }
+    
+    for (let slot of parsed) {
+      if (!slot.date || slot.slots == null) {
+        throw new Error("Each availability item must include 'date' and 'slots'");
+      }
+      
+      if (isNaN(Date.parse(slot.date))) {
+        throw new Error("Invalid date format in availability");
+      }
+      
+      const slots = Number(slot.slots);
+      if (isNaN(slots) || slots <= 0) {
+        throw new Error("Slots must be a positive number");
+      }
+    }
+    
+    return true;
+  }),
 
   check("meetingPoint")
     .notEmpty().withMessage("Meeting point is required"),

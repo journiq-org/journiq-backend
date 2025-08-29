@@ -18,6 +18,9 @@ bookingRoute.patch('/update-status/:id', updateBookingStatus);
 // User cancels booking
 bookingRoute.patch('/cancel/:bookingId', cancelBookingByUser); 
 
+ // Guide responds to booking
+bookingRoute.patch('/guide/update-status/:bookingId', respondToBookingByGuide);
+
 // Admin deletes booking
 bookingRoute.patch('/admin/delete-booking/:bookingId', deleteBooking); 
 
