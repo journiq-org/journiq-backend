@@ -18,13 +18,14 @@ export const getAllUser = async (req , res ,next) => {
             return next(new HttpError('You are not authorized to perform this action',403))
         }else{
 
+
             const users = await User.find({isDeleted:false, role:'traveller'}).select('-password')
 
             if(users){
                 res.status(200).json({
                     status:true,
                     message:null,
-                    data:users
+                    data:users,
                 })
             }
         }
@@ -211,13 +212,16 @@ export const getAllGuide = async (req,res,next) => {
             return next(new HttpError('You are not authorized to perform this action',403))
         }else{
 
+
+
+            //get guides data
             const guides = await User.find({isDeleted:false, role:'guide'})
 
             if(guides){
                 res.status(200).json({
                     status:true,
                     message:null,
-                    data:guides
+                    data:guides,
                 })
             }
         }
@@ -357,6 +361,33 @@ export const revokeGuide = async (req,res,next) => {
     }
 }
 
+//get guide by id
+export const viewGuideById = async (req,res,next) => {
+    try{
+        const id = req.params.id
+        const {user_role: tokenRole} = req.user_data
+
+        if(tokenRole !== 'admin') {
+            return next(new HttpError('You are not authorized to perform this action',403))
+        }else{
+            const guide = await User.findOne({_id: id,role: "guide",isDeleted: false}).select("-password");
+
+            if(!guide){
+                return next(new HttpError('Guide not found ', 404))
+            }else{
+                return res.status(200).json({
+                    success: true,
+                    message: null,
+                    data: guide,
+                });
+            }
+        }
+
+    }catch(err){
+        return next(new HttpError('Oops ! Something went wrong',500))
+    }
+}
+
 
 //TOUR MODERATION - not checked in postman |
  
@@ -422,13 +453,14 @@ export const getTourByGuide = async (req,res,next) => {
             return next(new HttpError('You are not authorized to perform this action',403))
         }else{
 
+
             const tours = await Tour.find({guide:id, is_deleted:false})
 
             if(tours){
                 res.status(200).json({
                     status:true,
                     message:null,
-                    data: tours
+                    data: tours,
                 })
             }
         }
@@ -489,7 +521,7 @@ export const getBookingsByTour = async (req,res,next) => {
                 res.status(200).json({
                     status:true,
                     message:null,
-                    data: bookings
+                    data: bookings,
                 })
             }
          }
@@ -588,3 +620,32 @@ export const adminDeleteReview = async (req,res,next) => {
         return next(new HttpError('Oops! Something went wrong',500))
     }
 }
+
+
+//dashboard statistics
+export const getDashboardStats = async (req, res, next) => {
+  try {
+    const { user_role: tokenRole } = req.user_data;
+    if (tokenRole !== "admin") {
+      return next(new HttpError("Not authorized", 403));
+    }
+
+    const totalUsers = await User.countDocuments({ isDeleted: false });
+    const totalGuides = await User.countDocuments({ role: "guide", isDeleted: false });
+    const totalTours = await Tour.countDocuments({ is_deleted: false });
+    const totalBookings = await Booking.countDocuments({ isDeleted: false });
+
+    res.status(200).json({
+      status: true,
+      message: null,
+      data: {
+        totalUsers,
+        totalGuides,
+        totalTours,
+        totalBookings
+      }
+    });
+  } catch (err) {
+    return next(new HttpError("Failed to fetch dashboard stats", 500));
+  }
+};
