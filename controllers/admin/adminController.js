@@ -483,6 +483,8 @@ export const getSingleTourByGuide = async (req,res,next) => {
         }else{
 
             const tour = await Tour.findOne({_id: tourId, is_deleted:false, guide:guideId})
+            .populate('guide', 'name email phone')
+            .populate('destination', 'name')
 
             if(!tour){
                 return next(new HttpError('Tour not found',404))
