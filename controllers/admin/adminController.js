@@ -5,6 +5,7 @@ import Review from '../../models/Review.js'
 import Tour from '../../models/Tour.js'
 import User from '../../models/User.js'
 import Notification from '../../models/Notification.js'
+import Destination from '../../models/Destination.js'
 
 
 //USER MANAGEMENT
@@ -649,5 +650,30 @@ export const getDashboardStats = async (req, res, next) => {
     });
   } catch (err) {
     return next(new HttpError("Failed to fetch dashboard stats", 500));
+  }
+};
+
+
+//Destination
+
+//view all destination
+export const getAllDestinationsAdmin = async (req, res, next) => {
+  try {
+    const {user_role : tokenRole} = req.user_data
+
+    if(tokenRole !== 'admin'){
+        return next(new HttpError('You are not authorized to view this',403))
+    }else{
+
+        const destinations = await Destination.find({is_deleted: false}); 
+
+        res.status(200).json({
+          message:null,  
+          status: true,
+          data: destinations,
+        });
+    }
+  } catch (err) {
+    next(err);
   }
 };

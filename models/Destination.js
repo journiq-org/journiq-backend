@@ -45,7 +45,7 @@ const destinationSchema = mongoose.Schema({
       default:true
     },
     createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId, 
       ref: "Admin", // or "Guide" if guides create destinations
       required: true,
     }

@@ -20,13 +20,23 @@ export const createDestination = async(req, res,next) => {
                 country,
                 city,
                 description,
-                popularAttractions,
+                // popularAttractions,
                 bestSeason,
-                tags,
-                location,
+                // tags,
+                // location,
             } = req.body
 
             const imagePaths = req.files?.map(file => file.path) || [];
+
+
+                let tags = [];
+                let popularAttractions = [];
+                let location = {};
+
+                if (req.body.tags) tags = JSON.parse(req.body.tags);
+                if (req.body.popularAttractions) popularAttractions = JSON.parse(req.body.popularAttractions);
+                if (req.body.location) location = JSON.parse(req.body.location);
+
 
             const{user_id: adminId, user_role: tokenRole} = req.user_data
 

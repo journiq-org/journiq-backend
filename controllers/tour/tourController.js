@@ -436,7 +436,7 @@ export const deleteTour = async (req,res,next) => {
 
                     const deleted = await Tour.findOneAndUpdate(
                         {_id:id, is_deleted: false,guide:guideId},
-                        {is_deleted:true},
+                        {is_deleted:true, isActive: false},
                         {new:true}
                     ).populate("destination", "name")
                      .populate("guide", "name");
