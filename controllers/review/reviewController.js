@@ -4,44 +4,21 @@ import HttpError from "../../middlewares/httpError.js";
 import Booking from "../../models/Booking.js";
 
 // Add Review
-// export const addReview = async (req, res, next) => {
-//   try {
-//     const { tourId } = req.params;
-//     const { serviceQuality, punctuality, satisfactionSurvey, comment } = req.body;
-
-//     const tour = await Tour.findById(tourId);
-//     if (!tour) return next(new HttpError("Tour not found", 404));
-
-//     const review = new Review({
-//       tour: tourId,
-//       user: req.user_data.user_id,
-//       experience: { serviceQuality, punctuality, satisfactionSurvey },
-//       comment,
-//     });
-
-//     await review.save();
-//     res.status(201).json({ message: "Review added successfully", review });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
-
-
 export const addReview = async (req, res, next) => {
   try {
     const { tourId } = req.params;
-    const { bookingId, serviceQuality, punctuality, satisfactionSurvey, comment } = req.body;
+    const { bookingId, rating, comment } = req.body;
 
-    // ✅ Check if tour exists
+    //  Check if tour exists
     const tour = await Tour.findById(tourId);
     if (!tour) return next(new HttpError("Tour not found", 404));
 
-    // ✅ Ensure user has a valid completed booking for this tour
+    // Ensure user has a valid completed booking for this tour
     const booking = await Booking.findOne({
       _id: bookingId,
       user: req.user_data.user_id,
       tour: tourId,
-      status: "completed", // allow review only if completed
+      status: "completed", // only allow if booking completed
     });
 
     if (!booking) {
@@ -50,22 +27,29 @@ export const addReview = async (req, res, next) => {
       );
     }
 
-    // ✅ Prevent duplicate reviews (1 review per booking)
-    const existingReview = await Review.findOne({ booking: bookingId, user: req.user_data.user_id });
+    //  Prevent duplicate reviews (1 review per booking)
+    const existingReview = await Review.findOne({
+      tour: tourId,
+      user: req.user_data.user_id,
+    });
     if (existingReview) {
-      return next(new HttpError("You already reviewed this booking", 400));
+      return next(new HttpError("You already reviewed this tour", 400));
     }
 
-    // ✅ Create new review
+    //  Create new review
     const review = await Review.create({
       tour: tourId,
-      booking: bookingId,
       user: req.user_data.user_id,
-      experience: { serviceQuality, punctuality, satisfactionSurvey },
+      booking: bookingId,   //  link booking
+      rating,
       comment,
     });
 
-    res.status(201).json({ message: "Review added successfully", review });
+
+    res.status(201).json({
+      message: "Review added successfully",
+      review,
+    });
   } catch (error) {
     next(error);
   }
@@ -119,28 +103,37 @@ export const deleteReview = async (req, res, next) => {
 export const updateReview = async (req, res, next) => {
   try {
     const reviewId = req.params.id;
-    const userId = req.user_data.user_id;
-    const { serviceQuality, punctuality, satisfactionSurvey, comment } = req.body;
+    const userId = req.user_data.user_id; // ✅ coming from auth middleware
+    const { rating, comment } = req.body;
 
+    // 1. Find review
     const review = await Review.findById(reviewId);
-    if (!review || review.isDeleted) return next(new HttpError("Review not found", 404));
-    if (review.user.toString() !== userId) return next(new HttpError("You can only update your own reviews", 403));
+    if (!review || review.isDeleted) {
+      return next(new HttpError("Review not found", 404));
+    }
 
-    if (serviceQuality) review.experience.serviceQuality = serviceQuality;
-    if (punctuality) review.experience.punctuality = punctuality;
-    if (satisfactionSurvey) review.experience.satisfactionSurvey = satisfactionSurvey;
+    // 2. Only review owner can update
+    if (review.user.toString() !== userId) {
+      return next(new HttpError("You can only update your own reviews", 403));
+    }
+
+    // 3. Update fields
+    if (rating) review.rating = rating;
     if (comment) review.comment = comment;
 
+    // 4. Save + Update Tour ratings
     await review.save();
     await Review.updateTourRatings(review.tour);
 
-    res.status(200).json({ message: "Review updated", review });
+    res.status(200).json({
+      message: "Review updated successfully",
+      review,
+    });
   } catch (error) {
     next(error);
   }
 };
 
-// Get reviews by role
 // Get reviews by role (admin / guide / traveller)
 export const getReviewsByRole = async (req, res, next) => {
   try {

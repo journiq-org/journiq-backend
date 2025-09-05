@@ -162,9 +162,11 @@ export const getBookings = async (req, res, next) => {
             }else{
             // const bookings = await Booking.find({user: travellerId,isDeleted:false}).populate("tour");
 
-            const bookings = await Booking.find({ user: travellerId, isDeleted: false })
-            .populate("tour", "title description")
-            .populate("review"); // ✅
+            // bookingController.js
+            const bookings = await Booking.find({ user: req.user_data.user_id })
+              .populate("tour")
+              .populate("review"); 
+
 
 
             if(!bookings || bookings.length === 0) {
@@ -616,37 +618,44 @@ export const checkAvailability = async (req, res, next) => {
 
 
 // GET /api/bookings/get-all-booking (Admin only)
-// export const getAllBookings = async (req, res, next) => {
-//   try {
-//     const { user_id, user_role } = req.user_data;
+export const getAllBookings = async (req, res, next) => {
+  try {
+    const { user_role } = req.user_data;
 
-//     // Only admin can access
-//     if (user_role !== "admin") {
-//       return next(new HttpError("Unauthorized access", 403));
-//     }
+    // Only admin can access
+    if (user_role !== "admin") {
+      return next(new HttpError("Unauthorized access", 403));
+    }
 
-//     // Fetch all non-deleted bookings
-//     const bookings = await Booking.find({ isDeleted: false })
-//       .sort({ date: -1 }) // latest bookings first
-//       .populate("tour", "title date price guide") // populate tour info
-//       .populate("user", "name email"); // populate traveller info
+    // Fetch all non-deleted bookings
+    const bookings = await Booking.find({ isDeleted: false })
+      .sort({ createdAt: -1 }) // latest bookings first
+      .populate({
+        path: "tour",
+        select: "title price guide",
+        populate: { path: "guide", select: "name email" },
+      })
+      .populate("user", "name email") // traveller info
+      .populate("review", "rating comment") // optional, if you want reviews too
+      .lean();
 
-//     if (!bookings || bookings.length === 0) {
-//       return next(new HttpError("No bookings found", 404));
-//     }
+    if (!bookings || bookings.length === 0) {
+      return res.status(404).json({ message: "No bookings found" });
+    }
 
-//     res.status(200).json({
-//       message: "Bookings fetched successfully",
-//       bookings,
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
+    res.status(200).json({
+      message: "All bookings fetched successfully",
+      count: bookings.length,
+      bookings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 
 
-
+// get booking by tour id
 export const getBookingsByTourId = async (req, res, next) => {
     try {
         const { tourId } = req.params;

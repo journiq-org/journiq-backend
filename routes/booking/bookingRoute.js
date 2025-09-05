@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { addExperienceToBooking, cancelBookingByUser, checkAvailability, createBooking, deleteBooking, getBookings, getBookingsByTourId, getGuideBookings, respondToBookingByGuide, updateBookingStatus } from "../../controllers/booking/bookingController.js";
+import { addExperienceToBooking, cancelBookingByUser, checkAvailability, createBooking, deleteBooking, getAllBookings, getBookings, getBookingsByTourId, getGuideBookings, respondToBookingByGuide, updateBookingStatus } from "../../controllers/booking/bookingController.js";
 import userAuthCheck from "../../middlewares/userAuthCheck.js";
 
 const bookingRoute = Router();
@@ -32,9 +32,13 @@ bookingRoute.get('/for-guide', getGuideBookings);
  // Guide responds to booking
 bookingRoute.patch('/guide/update-status/:bookingId', respondToBookingByGuide);
 
-// bookingRoute.post('/addExp', addExperienceToBooking)
+// 
 
-// get-all-booking for admin
+// get-all-booking for admin using tour id
 bookingRoute.get('/get-booking/:tourId', getBookingsByTourId)
+
+
+// get-all-booking 
+bookingRoute.get('/admin/all',getAllBookings )
 
 export default bookingRoute;
