@@ -1,6 +1,6 @@
 import { Router } from "express";
 import userAuthCheck from "../../middlewares/userAuthCheck.js";
-import { getAllUser, getUserById, toggleBlockUser ,getBlockedUsers, deleteUser, getAllGuide, verifyGuide, revokeGuide, toggleBlockTour, getTourByGuide, getSingleTourByGuide, getBookingsByTour, getSingleBooking, adminDeleteReview, getDashboardStats, viewGuideById, getAllDestinationsAdmin } from "../../controllers/admin/adminController.js";
+import { getAllUser, getUserById, toggleBlockUser ,getBlockedUsers, deleteUser, getAllGuide, verifyGuide, revokeGuide, toggleBlockTour, getTourByGuide, getSingleTourByGuide, getBookingsByTour, getSingleBooking, adminDeleteReview, getDashboardStats, viewGuideById, getAllDestinationsAdmin, getGuideTotalReviews } from "../../controllers/admin/adminController.js";
 
 
 const adminRoute = Router()
@@ -17,6 +17,7 @@ adminRoute.get('/guide', getAllGuide)
 adminRoute.get('/allDestinations',getAllDestinationsAdmin)
 adminRoute.get('/dashboard-stats',getDashboardStats)
 adminRoute.patch('/deleteReview/:id', adminDeleteReview)
+adminRoute.get('/guide/:guideId/review/count',getGuideTotalReviews)
 adminRoute.get('/viewGuide/:id',viewGuideById)
 //path with id
 adminRoute.get('/users/:id',getUserById)

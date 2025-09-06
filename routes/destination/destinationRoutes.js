@@ -9,9 +9,11 @@ const destinationRoute = Router()
 destinationRoute.get('/viewAllDestination',getAlldestinations)
 destinationRoute.get('/:id/tours',getToursByDestination)
 
+
 destinationRoute.use(userAuthCheck)
 
-destinationRoute.post('/createDestination', upload.array('images',3),
+
+destinationRoute.post('/createDestination', upload.array('images', 3),
 [
   check("name")
     .notEmpty().withMessage("Name is required")
@@ -27,11 +29,10 @@ destinationRoute.post('/createDestination', upload.array('images',3),
   check("description")
     .notEmpty().withMessage("Description is required"),
 
-  // image is handled by multer (req.file), so we skip validating it here
-
+  // For JSON strings that will be parsed to arrays
   check("popularAttractions")
     .optional()
-    .isArray().withMessage("Popular attractions must be an array"),
+    .isString().withMessage("Popular attractions must be a valid JSON string"),
 
   check("bestSeason")
     .optional()
@@ -39,18 +40,14 @@ destinationRoute.post('/createDestination', upload.array('images',3),
 
   check("tags")
     .optional()
-    .isArray().withMessage("Tags must be an array of strings"),
+    .isString().withMessage("Tags must be a valid JSON string"),
 
-  // Nested object validation for location
-  check("location.lat")
+  // Location as JSON string
+  check("location")
     .optional()
-    .isFloat({ min: -90, max: 90 }).withMessage("Latitude must be between -90 and 90"),
+    .isString().withMessage("Location must be a valid JSON string"),
 
-  check("location.lng")
-    .optional()
-    .isFloat({ min: -180, max: 180 }).withMessage("Longitude must be between -180 and 180"),
-
-],createDestination)
+], createDestination)
 
 destinationRoute.get('/viewDestination/:id',getDestinationById)
 destinationRoute.patch('/updateDestination/:id',upload.array('images',3),

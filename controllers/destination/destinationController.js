@@ -22,20 +22,32 @@ export const createDestination = async(req, res,next) => {
                 description,
                 // popularAttractions,
                 bestSeason,
+                // lat,
+                // lng,
                 // tags,
                 // location,
             } = req.body
 
             const imagePaths = req.files?.map(file => file.path) || [];
 
+ // Parse JSON strings to arrays
+            let popularAttractions = [];
+            let tags = [];
+            let location = {};
 
-                let tags = [];
-                let popularAttractions = [];
-                let location = {};
-
-                if (req.body.tags) tags = JSON.parse(req.body.tags);
-                if (req.body.popularAttractions) popularAttractions = JSON.parse(req.body.popularAttractions);
-                if (req.body.location) location = JSON.parse(req.body.location);
+            try {
+                if (req.body.popularAttractions) {
+                    popularAttractions = JSON.parse(req.body.popularAttractions);
+                }
+                if (req.body.tags) {
+                    tags = JSON.parse(req.body.tags);
+                }
+                if (req.body.location) {
+                    location = JSON.parse(req.body.location);
+                }
+            } catch (parseError) {
+                return next(new HttpError('Invalid JSON format in request data', 400))
+            }
 
 
             const{user_id: adminId, user_role: tokenRole} = req.user_data
@@ -55,7 +67,7 @@ export const createDestination = async(req, res,next) => {
                     bestSeason,
                     tags,
                     location,
-                    createdBy: adminId
+                    createdBy: adminId,
                 }).save()
 
                 if(!newDestination){
@@ -118,31 +130,88 @@ export const updateDestination = async(req,res,next) => {
                 tags,
                 location,
             } = req.body
-
-            const imagePath = req.files && req.files.length > 0 
-                ? req.files.map(file => file.path) 
-                : [];
-
+            
             const { user_id: adminId, user_role: tokenRole} = req.user_data
+          
+          
+            // const imagePath = req.files && req.files.length > 0 
+            //     ? req.files.map(file => file.path) 
+            //     : [];
+
 
             if(tokenRole !== 'admin'){
                 return next(new HttpError('You are not authorized to perform this action',403))
             }else{
+
+                // Fetch current destination
+                const currentDestination = await Destination.findById(id);
+                if (!currentDestination) return next(new HttpError("Destination not found", 404));
+
+                // ---- Helper to parse arrays ----
+                const parseArrayField = (field, fallback = []) => {
+                    if (!field) return fallback;
+                    if (Array.isArray(field)) return field;
+                    return [field];
+                };
+
+                 const parsedPopularAttractions = parseArrayField(popularAttractions, currentDestination.popularAttractions);
+                const parsedTags = parseArrayField(tags, currentDestination.tags);
+
+                // ---- Location Handling ----
+                let parsedLocation = currentDestination.location;
+                if (location && typeof location === "object") {
+                    parsedLocation = {
+                        lat: parseFloat(location.lat) || currentDestination.location?.lat,
+                        lng: parseFloat(location.lng) || currentDestination.location?.lng
+                    };
+                }
+
+                 // ---- Images Handling ----
+                let updatedImages = [];
+
+                // 1. Start with existing images from current destination
+                if (currentDestination.images) {
+                    updatedImages = [...currentDestination.images];
+                }
+
+                // Replace with only the existingImages[] sent from frontend (these are the ones user wants to keep)
+                if (req.body.existingImages && req.body.existingImages.length > 0) {
+                    updatedImages = Array.isArray(req.body.existingImages)
+                        ? req.body.existingImages
+                        : [req.body.existingImages];
+                } else if (req.body.existingImages === null || req.body.existingImages === undefined) {
+                    // If no existingImages sent, user removed all images
+                    updatedImages = [];
+                }
+
+                //  Add new uploaded files
+                if (req.files && req.files.length > 0) {
+                    updatedImages = [
+                        ...updatedImages,
+                        ...req.files.map((file) => file.path),
+                    ];
+                }
+                
+                console.log("Current destination images:", currentDestination.images);
+                console.log("Received existingImages:", req.body.existingImages);
+                console.log("Final updatedImages:", updatedImages);
+
                 
                 const updateValues = {
                     name,
                     country, 
                     city,
                     description,
-                    popularAttractions,
+                    popularAttractions: parsedPopularAttractions,
                     bestSeason,
-                    tags,
-                    location
+                    tags: parsedTags,
+                    location:parsedLocation,
+                    images: updatedImages
                 }
 
-                if (imagePath.length > 0) {
-                    updateValues.images = imagePath;
-                }
+                // if (imagePath.length > 0) {
+                //     updateValues.images = imagePath;
+                // }
 
                 const updatedDestination = await Destination.findOneAndUpdate(
                     {_id:id, is_deleted: false,createdBy:adminId},
@@ -156,7 +225,7 @@ export const updateDestination = async(req,res,next) => {
                     res.status(200).json({
                         status:true,
                         message:'Destination updated successfully',
-                        data: null
+                        data: updatedDestination
                     })
                 }
             }

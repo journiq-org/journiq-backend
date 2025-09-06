@@ -456,6 +456,7 @@ export const getTourByGuide = async (req,res,next) => {
 
 
             const tours = await Tour.find({guide:id, is_deleted:false})
+            .populate('destination', 'name')
 
             if(tours){
                 res.status(200).json({
@@ -485,7 +486,7 @@ export const getSingleTourByGuide = async (req,res,next) => {
 
             const tour = await Tour.findOne({_id: tourId, is_deleted:false, guide:guideId})
             .populate('guide', 'name email phone')
-            .populate('destination', 'name')
+            .populate('destination', 'name ')
 
             if(!tour){
                 return next(new HttpError('Tour not found',404))
@@ -623,6 +624,45 @@ export const adminDeleteReview = async (req,res,next) => {
         return next(new HttpError('Oops! Something went wrong',500))
     }
 }
+
+//get review count for guide
+export const getGuideTotalReviews = async (req, res, next) => {
+    try{
+        const {guideId} = req.params
+        const {user_role: tokenRole} = req.user_data
+
+        if(tokenRole !== 'admin'){
+            return next(new HttpError('Your not authorized to perform this action',403))
+        }else{
+
+            //get all tour ids
+            const tours = await Tour.find({guide: guideId,is_deleted: false}).select('_id')
+
+            if(!tours.length){
+                 return res.status(200).json({
+                    status: true,
+                    message: "No tours found for this guide",
+                    data: { totalReviews: 0 },
+                })
+            }
+
+            const tourIds = tours.map((t) => t._id)
+
+            //count review
+            const totalReviews = await Review.countDocuments({tour: {$in: tourIds},isDeleted: false})
+
+            return res.status(200).json({
+                status: true,
+                message: null,
+                data: { totalReviews },
+            })
+        }
+
+    }catch(err){
+        return next(new HttpError('Oops! Something went wrong', 500))
+    }
+}
+
 
 
 //dashboard statistics

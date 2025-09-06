@@ -133,7 +133,7 @@ export const createTour = async (req,res,next) => {
                     if(!newTour){
                         return next(new HttpError("Failed to create tour",400))
                     }else{
-
+                        
                         // Populate destination name before sending email
                         const populatedTour = await newTour.populate("destination", "name");
 
