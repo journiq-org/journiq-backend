@@ -227,8 +227,12 @@ export const editUserProfile = async (req, res, next) => {
 
 // delete user 
 export const deleteUser = async (req, res, next) => {
+  
   try {
-    const user = await User.findByIdAndDelete(req.user_data.user_id); 
+    // const {id} =req.params
+    const {user_id, user_role: tokenRole} = req.user_data
+
+    const user = await User.findByIdAndUpdate({_id:user_id,isDeleted : false},{isDeleted: true},{new : true}); 
 
     if (!user) {
       return next(new HttpError("User not found", 404));
@@ -236,18 +240,8 @@ export const deleteUser = async (req, res, next) => {
 
     res.status(200).json({
       status: true,
-      message: "User account deleted successfully",
-      data: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        profilePic: user.profilePic,
-        phone: user.phone,
-        bio: user.bio,
-        location: user.location,
-        isVerified: user.isVerified,
-      },
+      message:null,
+      data: user
     });
 
   } catch (error) {

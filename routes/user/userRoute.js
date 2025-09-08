@@ -42,7 +42,7 @@ userRoute.use(userAuthCheck);
 
 userRoute.get('/view-profile', getUserProfile);
 userRoute.patch('/edit-profile', upload.single('profilePic'), editUserProfile);
-userRoute.delete('/deleteUser', deleteUser);
+userRoute.patch('/deleteUser', deleteUser);
 userRoute.patch('/ChangePassword', changePassword);
 
 // Example route with role check (optional)

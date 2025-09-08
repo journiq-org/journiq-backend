@@ -15,9 +15,9 @@ import cookieParser from 'cookie-parser'
 
 dotenv.config()
 
-
 const PORT = process.env.PORT || 5000
 const app = express()
+
 
 connectDB()
 
@@ -29,7 +29,11 @@ app.use('/uploads', express.static('uploads'));
 app.use(express.json()) 
 app.use(cookieParser())
 
-//routes
+
+// app.use(express.json()) 
+// app.use(cors())
+
+
 app.use('/api/users', userRoute)
 app.use('/api/tour',tourRoute)
 app.use('/api/destination',destinationRoute)
@@ -45,14 +49,13 @@ app.use("/api/messages", messageRoutes);
 //   });
 // });
 
-app.use((error, req, res, next) => {
-  const statusCode = typeof error.code === 'number' ? error.code : 500;
 
-  res.status(statusCode).json({
+app.use((error, req, res, next) => {
+  res.status(error.code || 500).json({
     message: error.message || "An unknown error occurred",
   });
 });
 
 
 // Start server
-app.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`))
+app.listen(PORT, () => console.log(`Server running on ${PORT}`))
