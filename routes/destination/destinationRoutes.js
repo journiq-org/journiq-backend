@@ -8,6 +8,7 @@ const destinationRoute = Router()
 
 destinationRoute.get('/viewAllDestination',getAlldestinations)
 destinationRoute.get('/:id/tours',getToursByDestination)
+destinationRoute.get('/viewDestination/:id',getDestinationById)
 
 
 destinationRoute.use(userAuthCheck)
@@ -49,7 +50,6 @@ destinationRoute.post('/createDestination', upload.array('images', 3),
 
 ], createDestination)
 
-destinationRoute.get('/viewDestination/:id',getDestinationById)
 destinationRoute.patch('/updateDestination/:id',upload.array('images',3),
 [
   check("name")

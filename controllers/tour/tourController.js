@@ -612,12 +612,11 @@ export const toggleTourActiveStatus = async (req,res,next) => {
 
                             // In-app notification
                             await Notification.create({
-                                user: traveller._id,
-                                title: "Tour Status Update",
+                                recipient: traveller._id,
+                                sender: guideId,
+                                type: "tour_updated",
                                 message: `The tour "${tour.title}" has been ${tour.isActive ? "enabled" : "disabled"} by the guide.`,
-                                type: "tour",
-                                relatedId: tour._id,
-                                isRead: false
+                                relatedTour: tour._id
                             })
 
                             // Email notification
