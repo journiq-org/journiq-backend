@@ -13,7 +13,12 @@ import Destination from '../../models/Destination.js'
 //view all users
 export const getAllUser = async (req , res ,next) => {
     try{
+        let total = 0 
         const {user_id : adminId,user_role:tokenRole} = req.user_data
+
+        //pagination
+        const limit = parseInt(req.query.limit) || 10
+        const skip = parseInt(req.query.skip) || 0
 
         if(tokenRole !== 'admin'){
             return next(new HttpError('You are not authorized to perform this action',403))
@@ -21,12 +26,18 @@ export const getAllUser = async (req , res ,next) => {
 
 
             const users = await User.find({isDeleted:false, role:'traveller'}).select('-password')
+             //pagination
+            .skip(skip)
+            .limit(limit)
+
+            total = await User.countDocuments({isDeleted: false, role: 'traveller'})
 
             if(users){
                 res.status(200).json({
                     status:true,
                     message:null,
                     data:users,
+                    total : total
                 })
             }
         }
@@ -207,7 +218,11 @@ export const deleteUser = async (req,res,next) => {
 //get all guide
 export const getAllGuide = async (req,res,next) => {
     try{
+        let total = 0
         const { user_role: tokenRole} = req.user_data
+
+        const limit = (req.query.limit) || 10
+        const skip = (req.query.skip ) || 0
 
         if(tokenRole !== 'admin') {
             return next(new HttpError('You are not authorized to perform this action',403))
@@ -217,12 +232,17 @@ export const getAllGuide = async (req,res,next) => {
 
             //get guides data
             const guides = await User.find({isDeleted:false, role:'guide'})
+            .limit(limit)
+            .skip(skip)
+
+            total = await User.countDocuments({isDeleted: false, role: 'guide'})
 
             if(guides){
                 res.status(200).json({
                     status:true,
                     message:null,
                     data:guides,
+                    total: total
                 })
             }
         }
