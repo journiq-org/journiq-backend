@@ -129,15 +129,15 @@ export const getBlockedUsers = async (req,res,next) => {
         }else{
             const users = await User.find({isBlocked: true}).select('-password')
 
-            if(!users || users.length === 0){
-                return next(new HttpError('No blocked users found',404))
-            }else{
+            // if(!users || users.length === 0){
+            //     return next(new HttpError('No blocked users found',404))
+            // }else{
                 res.status(200).json({
                     status:true,
                     message:null,
                     data: users
                 })
-            }
+            // }
         }
 
     }catch(err){
