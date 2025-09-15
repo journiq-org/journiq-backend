@@ -653,151 +653,129 @@ export const toggleTourActiveStatus = async (req,res,next) => {
 
 
 
-//view all tour
-// export const getAllTour = async (req, res,next) => {
-//     try{
-//         let tourList = []
-//         // let query = {is_deleted:false, isBlocked:false, isActive:true}
-
-//         // if(searchquery) {
-
-//         // }
-
-//         const {user_id: guideId, user_role:tokenRole} = req.user_data
-
-//         if(tokenRole === "guide" ){
-
-//             tourList = await Tour.find({is_deleted:false ,guide: guideId,isBlocked:false,isActive:true})
-//         }
-//         else{
-
-//             tourList = await Tour.find({is_deleted:false, isBlocked:false, isActive:true})
-//         }
-
-//         if(tourList){
-//             res.status(200).json({
-//                 status:true,
-//                 message:null,
-//                 data:tourList
-//             })
-//         }
-//     }catch(err){
-//         console.error("Error fetching tours", err)
-//         return next(new HttpError('Oops! Something went wrong',500))
-//     }
-// }
-
-
-
-//view  all tour with support search, filters, destination, and popularity functions included
+// View all tours with search, filters, destination, popularity, and pagination
 export const getAllTour = async (req, res, next) => {
-    try {
-        const { 
-            destination, 
-            title, 
-            category, 
-            priceMin, 
-            priceMax, 
-            durationMin, 
-            durationMax, 
-            date, 
-            ratingMin, 
-            popular 
-        } = req.query;
+  try {
+    const { 
+      destination, 
+      title, 
+      category, 
+      priceMin, 
+      priceMax, 
+      durationMin, 
+      durationMax, 
+      date, 
+      ratingMin, 
+      popular,
+      skip,
+      limit
+    } = req.query;
 
-        const { user_id: guideId, user_role: tokenRole } = req.user_data || {};
+    const { user_id: guideId, user_role: tokenRole } = req.user_data || {};
 
-        let query = { is_deleted: false, isBlocked: false};
+    let query = { is_deleted: false, isBlocked: false };
 
-        // Public users should only see active tours; guides should see their tours (even inactive)
-        if (tokenRole !== 'guide') {
-            query.isActive = true;
-        }
-
-        // Guide can only see their tours
-        if (tokenRole === "guide") {
-            query.guide = guideId;
-        }
-
-        // Filter: destination
-        if (destination && mongoose.Types.ObjectId.isValid(destination)) {
-            query.destination = destination;
-        }
-
-        // Filter: title (case-insensitive search)
-        if (title) {
-            query.title = {$regex: title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' };
-        }
-
-        // Filter: category
-        if (category) {
-            query.category = category;
-        }
-
-        // Filter: price range
-        if (priceMin || priceMax) {
-            query.price = {};
-            if (priceMin) query.price.$gte = Number(priceMin);
-            if (priceMax) query.price.$lte = Number(priceMax);
-        }
-
-        // Filter: duration range
-        if (durationMin || durationMax) {
-            query.duration = {};
-            if (durationMin) query.duration.$gte = Number(durationMin);
-            if (durationMax) query.duration.$lte = Number(durationMax);
-        }
-
-        // Filter: rating minimum
-        if (ratingMin) {
-            query.rating = { $gte: Number(ratingMin) };
-        }
-
-       // availability date: match any availability item whose date falls in the day range
-        let filterDateStart, filterDateEnd;
-        if (date) {
-            const d = new Date(date);
-            if (isNaN(d.getTime())) {
-                return next(new HttpError('Invalid date format. Use YYYY-MM-DD', 400));
-            }
-            filterDateStart = new Date(d);
-            filterDateStart.setHours(0,0,0,0);
-            filterDateEnd = new Date(d);
-            filterDateEnd.setHours(23,59,59,999);
-
-            query.availability = {
-                $elemMatch: {
-                date: { $gte: filterDateStart, $lte: filterDateEnd },
-                slots: { $gt: 0 }
-                }
-            };
-        }
-
-        // Query execution
-        let tourList = Tour.find(query)
-            .populate("destination", "name")
-            .populate("guide", "name email");
-
-        // Sorting for popular tours
-        if (popular === "true") {
-            tourList = tourList.sort({ rating: -1 }); // or bookingsCount if you store it
-        } else {
-            tourList = tourList.sort({ createdAt: -1 });
-        }
-
-        const tours = await tourList;
-
-        res.status(200).json({
-            status: true,
-            message: null,
-            data: tours
-        });
-
-    } catch (err) {
-        console.error("Error fetching tours", err);
-        return next(new HttpError("Oops! Something went wrong", 500));
+    // Public users should only see active tours; guides should see their tours (even inactive)
+    if (tokenRole !== "guide") {
+      query.isActive = true;
     }
+
+    // Guide can only see their tours
+    if (tokenRole === "guide") {
+      query.guide = guideId;
+    }
+
+    // Filter: destination
+    if (destination && mongoose.Types.ObjectId.isValid(destination)) {
+      query.destination = destination;
+    }
+
+    // Filter: title (case-insensitive search)
+    if (title) {
+      query.title = { 
+        $regex: title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), 
+        $options: "i" 
+      };
+    }
+
+    // Filter: category
+    if (category) {
+      query.category = category;
+    }
+
+    // Filter: price range
+    if (priceMin || priceMax) {
+      query.price = {};
+      if (priceMin) query.price.$gte = Number(priceMin);
+      if (priceMax) query.price.$lte = Number(priceMax);
+    }
+
+    // Filter: duration range
+    if (durationMin || durationMax) {
+      query.duration = {};
+      if (durationMin) query.duration.$gte = Number(durationMin);
+      if (durationMax) query.duration.$lte = Number(durationMax);
+    }
+
+    // Filter: rating minimum
+    if (ratingMin) {
+      query.rating = { $gte: Number(ratingMin) };
+    }
+
+    // Filter: availability date
+    if (date) {
+      const d = new Date(date);
+      if (isNaN(d.getTime())) {
+        return next(new HttpError("Invalid date format. Use YYYY-MM-DD", 400));
+      }
+      const filterDateStart = new Date(d.setHours(0,0,0,0));
+      const filterDateEnd = new Date(d.setHours(23,59,59,999));
+
+      query.availability = {
+        $elemMatch: {
+          date: { $gte: filterDateStart, $lte: filterDateEnd },
+          slots: { $gt: 0 }
+        }
+      };
+    }
+
+    // Pagination values
+    const limitNum = parseInt(limit) || 6;  // default 6 per page
+    const skipNum = parseInt(skip) || 0;
+
+    // Base query
+    let tourList = Tour.find(query)
+      .populate("destination", "name")
+      .populate("guide", "name email");
+
+    // Sorting
+    if (popular === "true") {
+      tourList = tourList.sort({ rating: -1 });
+    } else {
+      tourList = tourList.sort({ createdAt: -1 });
+    }
+
+    // Apply pagination
+    tourList = tourList.skip(skipNum).limit(limitNum);
+
+    // Execute query
+    const tours = await tourList;
+    const total = await Tour.countDocuments(query);
+
+    res.status(200).json({
+      status: true,
+      message: null,
+      total,                  // total tours (all matching filters)
+      count: tours.length,    // count in current page
+      data: tours
+    });
+
+  } catch (err) {
+    console.error("Error fetching tours", err);
+    return next(new HttpError("Oops! Something went wrong", 500));
+  }
 };
+
 
 
 //getToursByGuide route (for travellers visiting a guide’s profile)
@@ -860,7 +838,7 @@ export const getPublicToursByGuide = async (req, res, next) => {
 // }
 
 
-//list for public without authentication
+//list for public without authentication 111
 
 export const getAllToursPublic = async (req, res, next) => {
     try {
