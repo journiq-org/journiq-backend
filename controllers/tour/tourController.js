@@ -32,26 +32,26 @@ export const createTour = async (req,res,next) => {
             let availability = [];
 
             try {
-            itinerary = req.body.itinerary ? JSON.parse(req.body.itinerary) : [];
-            highlights = req.body.highlights ? JSON.parse(req.body.highlights) : [];
-            included = req.body.included ? JSON.parse(req.body.included) : [];
-            excluded = req.body.excluded ? JSON.parse(req.body.excluded) : [];
-            availability = req.body.availability ? JSON.parse(req.body.availability) : [];
+                itinerary = req.body.itinerary ? JSON.parse(req.body.itinerary) : [];
+                highlights = req.body.highlights ? JSON.parse(req.body.highlights) : [];
+                included = req.body.included ? JSON.parse(req.body.included) : [];
+                excluded = req.body.excluded ? JSON.parse(req.body.excluded) : [];
+                availability = req.body.availability ? JSON.parse(req.body.availability) : [];
             } catch (err) {
-            console.error("JSON parse error:", err.message);
-            return next(new HttpError("Invalid array data format", 400));
+                console.error("JSON parse error:", err.message);
+                return next(new HttpError("Invalid array data format", 400));
             }
 
             // Strings
             const {
-            title,
-            description,
-            duration,
-            price,
-            meetingPoint,
-            category,
-            rating,
-            destination,
+                title,
+                description,
+                duration,
+                price,
+                meetingPoint,
+                category,
+                rating,
+                destination,
             } = req.body;
 
 
@@ -133,6 +133,8 @@ export const createTour = async (req,res,next) => {
                     if(!newTour){
                         return next(new HttpError("Failed to create tour",400))
                     }else{
+
+                        
                         
                         // Populate destination name before sending email
                         const populatedTour = await newTour.populate("destination", "name");
@@ -140,6 +142,18 @@ export const createTour = async (req,res,next) => {
                         // 📩 Send email to Admin
                         const admin = await User.findOne({ role: "admin" }).select("email name");
                         if (admin) {
+
+                            // 🔔 In-app notification
+                            await Notification.create({
+                                recipient: admin._id,
+                                sender: guideId,
+                                type: "tour_updated",
+                                message: `A new tour "${title}" has been created by ${guide.name}.`,
+                                link: `/admin/tours/${newTour._id}`,
+                                relatedTour: newTour._id,
+                            });
+
+                            
                         const mailOptions = {
                             from: process.env.EMAIL_USER,
                             to: admin.email,
@@ -154,6 +168,7 @@ export const createTour = async (req,res,next) => {
                             price,
                             link: `https://yourfrontend.com/tour/${newTour._id}`,
                             },
+                            
                         };
 
                         transporter.sendMail(mailOptions, (error, info) => {
@@ -859,6 +874,10 @@ export const getAllToursPublic = async (req, res, next) => {
 
         const { id } = req.params;
 
+        //pagination
+        let total = 0
+        const limit = (req.query.limit) || 10
+        const skip = (req.query.skip) || 0
 
         // Public query — only active and not deleted/blocked
         let query = { 
@@ -929,21 +948,27 @@ export const getAllToursPublic = async (req, res, next) => {
         // Build query
         let tourList = Tour.find(query)
             .populate("destination", "name")
-            .populate("guide", "name email");
+            .populate("guide", "name email")
+            
 
-        // Sorting
+            
+            // Sorting
         if (popular === "true") {
             tourList = tourList.sort({ rating: -1 });
         } else {
             tourList = tourList.sort({ createdAt: -1 });
         }
-
+        
+        tourList = tourList.skip(skip).limit(limit);
+        total = await Tour.countDocuments(query)
+        
         const tours = await tourList;
 
         res.status(200).json({
             status: true,
             message: null,
-            data: tours
+            data: tours,
+            total
         });
 
     } catch (err) {

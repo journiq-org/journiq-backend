@@ -719,18 +719,28 @@ export const getDashboardStats = async (req, res, next) => {
 //view all destination
 export const getAllDestinationsAdmin = async (req, res, next) => {
   try {
+
+    let total = 0
     const {user_role : tokenRole} = req.user_data
+
+    const limit = (req.query.limit) || 10
+    const skip = (req.query.skip) || 0
 
     if(tokenRole !== 'admin'){
         return next(new HttpError('You are not authorized to view this',403))
     }else{
 
-        const destinations = await Destination.find({is_deleted: false}); 
+        const destinations = await Destination.find({is_deleted: false})
+        .limit(limit)
+        .skip(skip)
+
+        total = await Destination.countDocuments({is_deleted: false})
 
         res.status(200).json({
           message:null,  
           status: true,
           data: destinations,
+          total:total
         });
     }
   } catch (err) {

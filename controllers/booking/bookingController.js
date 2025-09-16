@@ -622,6 +622,10 @@ export const getAllBookings = async (req, res, next) => {
   try {
     const { user_role } = req.user_data;
 
+    let total = 0
+    const limit = (req.query.limit) || 10
+    const skip = (req.query.skip) || 0 
+
     // Only admin can access
     if (user_role !== "admin") {
       return next(new HttpError("Unauthorized access", 403));
@@ -637,7 +641,12 @@ export const getAllBookings = async (req, res, next) => {
       })
       .populate("user", "name email") // traveller info
       .populate("review", "rating comment") // optional, if you want reviews too
-      .lean();
+      .lean()
+      .limit(limit)
+      .skip(skip)
+
+      total = await Booking.countDocuments({isDeleted: false})
+
 
     if (!bookings || bookings.length === 0) {
       return res.status(404).json({ message: "No bookings found" });
@@ -647,6 +656,7 @@ export const getAllBookings = async (req, res, next) => {
       message: "All bookings fetched successfully",
       count: bookings.length,
       bookings,
+      total
     });
   } catch (error) {
     next(error);

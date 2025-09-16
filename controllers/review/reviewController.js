@@ -137,8 +137,16 @@ export const updateReview = async (req, res, next) => {
 // Get reviews by role (admin / guide / traveller)
 export const getReviewsByRole = async (req, res, next) => {
   try {
+
+    
     const userId = req.user_data.user_id;
     const userRole = req.user_data.user_role;
+
+    let total = 0
+    const limit = (req.query.limit) || 10
+    const skip = (req.query.skip) || 0
+
+
     if (!userId || !userRole) return next(new HttpError("Unauthorized access", 403));
 
     let reviews = [];
@@ -148,24 +156,39 @@ export const getReviewsByRole = async (req, res, next) => {
       reviews = await Review.find({ isDeleted: false })
         .populate("user", "name")
         .populate("tour", "title")
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+
+        total = await Review.countDocuments({isDeleted:false})
+
     } else if (userRole === "guide") {
       // Reviews for tours created by guide
       const tours = await Tour.find({ createdBy: userId }).select("_id");
       reviews = await Review.find({ tour: { $in: tours.map(t => t._id) }, isDeleted: false })
         .populate("user", "name")
         .populate("tour", "title")
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+
+        total = await Review.countDocuments({ tour: { $in: tours.map(t => t._id) }, isDeleted: false})
+
     } else if (userRole === "traveller") {
       // Reviews written by this traveller
       reviews = await Review.find({ user: userId, isDeleted: false })
         .populate("tour", "title")
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .skip(skip)
+
+        total = await Review.countDocuments({ user: userId, isDeleted: false})
+
     } else {
       return next(new HttpError("Unauthorized access", 403));
     }
 
-    res.status(200).json({ count: reviews.length, reviews });
+    res.status(200).json({ count: reviews.length, reviews , total});
   } catch (error) {
     next(error);
   }
