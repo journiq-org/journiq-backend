@@ -170,3 +170,27 @@ export const getReviewsByRole = async (req, res, next) => {
     next(error);
   }
 };
+
+
+// GET /reviews/top
+export const getTopReviews = async (req, res, next) => {
+  try {
+    const reviews = await Review.find({ 
+      rating: { $gte: 4 },
+      isDeleted: false  // Add this filter to match other endpoints
+    })
+      .sort({ createdAt: -1 })   // latest first
+      .limit(5)                  // only 5
+      .populate("user", "name")
+      .populate("tour", "title");
+
+    // Return consistent response format
+    res.status(200).json({ 
+      success: true,
+      reviews: reviews 
+    });
+  } catch (err) {
+    console.error('Error fetching top reviews:', err);
+    next(err);
+  }
+};

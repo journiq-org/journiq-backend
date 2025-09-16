@@ -5,12 +5,14 @@ import {
   getReviewsByRole,
   getReviewsForTour,
   updateReview,
-  getTopTours
+  getTopTours,
+  getTopReviews
 } from '../../controllers/review/reviewController.js';
 import userAuthCheck from '../../middlewares/userAuthCheck.js';
 
 const reviewRoute = express.Router();
 reviewRoute.get('/tour/:tourId', getReviewsForTour);
+reviewRoute.get('/topReview',getTopReviews)
 
 reviewRoute.use(userAuthCheck);
 
