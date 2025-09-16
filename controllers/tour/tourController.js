@@ -701,9 +701,28 @@ export const getAllTour = async (req, res, next) => {
     }
 
     // Filter: destination
-    if (destination && mongoose.Types.ObjectId.isValid(destination)) {
-      query.destination = destination;
-    }
+    // if (destination) {
+    // if (mongoose.Types.ObjectId.isValid(destination)) {
+    //     query.destination = destination;
+    // } else {
+    //     // fallback: match by destination name (case-insensitive)
+    //     query["destination.name"] = { $regex: destination, $options: "i" };
+    // }
+    // }
+
+    if (destination) {
+  if (mongoose.Types.ObjectId.isValid(destination)) {
+    query.destination = destination;
+  } else {
+    // find destination by name → get its _id
+    const destDoc = await Destination.findOne({ 
+      name: { $regex: destination, $options: "i" } 
+    });
+    if (destDoc) query.destination = destDoc._id;
+  }
+}
+
+
 
     // Filter: title (case-insensitive search)
     if (title) {

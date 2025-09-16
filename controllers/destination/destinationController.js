@@ -315,105 +315,6 @@ export const getDestinationById = async (req, res,next) => {
     }
 }
 
-
-// //get all destination
-// export const getAlldestinations = async(req,res,next) => {
-//     try{
-//         const destinations = await Destination.find({is_deleted: false}).sort({ createdAt : -1}) // to list out in descending form
-
-//         if(destinations){
-//             res.status(200).json({
-//                 status:true,
-//                 message:null,
-//                 data: destinations
-//             })
-//         }
-//     }catch(err){
-//         return next(new HttpError('Oops! Something went wrong',500))
-//     }
-// }
-
-
-
-// GET all destinations with search & filters   111
-// export const getAlldestinations = async (req, res, next) => {
-//     try {
-//         const { 
-//             search, 
-//             country, 
-//             bestSeason, 
-//             tags, 
-//             popularAttractions, 
-//             sort 
-//         } = req.query;
-
-//         let query = { is_deleted: false , is_active:true};
-
-//         // Search by name, country, city, tags (case-insensitive)
-//         if (search) {
-//             const searchRegex = new RegExp(search, "i");
-//             query.$or = [
-//                 { name: searchRegex },
-//                 { country: searchRegex },
-//                 { city: searchRegex },
-//                 { tags: searchRegex }
-//             ];
-//         }
-
-//         // Filter: country
-//         if (country) {
-//             query.country = { $regex: new RegExp(country, "i") };
-//         }
-
-//         // Filter: bestSeason
-//         if (bestSeason) {
-//             query.bestSeason = { $regex: new RegExp(bestSeason, "i") };
-//         }
-
-//         // Filter: tags (must contain all tags)
-//         if (tags) {
-//             const tagsArray = tags.split(",").map(tag => tag.trim());
-//             query.tags = { $all: tagsArray };
-//         }
-
-//         // Filter: popularAttractions (must contain all)
-//         if (popularAttractions) {
-//         const attractionsArray = popularAttractions.split(",").map(attr => attr.trim());
-//         query.popularAttractions = { 
-//             $all: attractionsArray.map(attr => new RegExp(attr, "i")) 
-//         };
-// }
-
-//         // Base query
-//         let destinationList = Destination.find(query);
-
-//         // Sorting
-//         if (sort === "name") {
-//             destinationList = destinationList.sort({ name: 1 });
-//         } else if (sort === "name-desc") {
-//             destinationList = destinationList.sort({ name: -1 });
-//         } else if (sort === "oldest") {
-//             destinationList = destinationList.sort({ createdAt: 1 });
-//         } else {
-//             destinationList = destinationList.sort({ createdAt: -1 }); // default latest first
-//         }
-
-//         const destinations = await destinationList;
-
-//         res.status(200).json({
-//             status: true,
-//             message: null,
-//             count: destinations.length,
-//             data: destinations
-//         });
-
-//     } catch (err) {
-//         console.error("Error fetching destinations", err);
-//         return next(new HttpError("Oops! Something went wrong", 500));
-//     }
-// };
-
-
 // GET all destinations with search, filters & pagination
 export const getAlldestinations = async (req, res, next) => {
   try {
@@ -427,7 +328,7 @@ export const getAlldestinations = async (req, res, next) => {
     } = req.query;
 
     // Pagination
-    const limit = parseInt(req.query.limit) || 6; // per page
+    const limit = parseInt(req.query.limit) || 6; 
     const skip = parseInt(req.query.skip) || 0;
 
     let query = { is_deleted: false, is_active: true };
@@ -480,7 +381,7 @@ export const getAlldestinations = async (req, res, next) => {
     } else if (sort === "oldest") {
       destinationList = destinationList.sort({ createdAt: 1 });
     } else {
-      destinationList = destinationList.sort({ createdAt: -1 }); // default latest first
+      destinationList = destinationList.sort({ createdAt: -1 }); 
     }
 
     // Apply pagination
@@ -495,8 +396,8 @@ export const getAlldestinations = async (req, res, next) => {
     res.status(200).json({
       status: true,
       message: null,
-      total,               // total destinations (all matching filters)
-      count: destinations.length, // count in current page
+      total,              
+      count: destinations.length,
       data: destinations,
     });
   } catch (err) {
@@ -571,11 +472,11 @@ export const getPopularDestinations = async (req, res, next) => {
 export const getToursByDestination = async(req,res, next) => {
     try{
 
-        const {id} = req.params //destination id
+        const {id} = req.params 
 
         const tours = await Tour.find({destination: id, is_deleted:false})
-        .populate("guide", "name email") // show guide details if needed
-        .populate("destination", "name country") // show destination details
+        .populate("guide", "name email") 
+        .populate("destination", "name country") 
         .lean();
 
         if (!tours || tours.length === 0) {
@@ -638,7 +539,7 @@ export const toggleDestinationStatus = async(req,res,next)  => {
                             from: process.env.EMAIL_USER,
                             to: guide.email,
                             subject: `Destination ${statusText}`,
-                            template: "destinationStatus", // your .hbs file name
+                            template: "destinationStatus", 
                             context: {
                                 guideName: guide.name || "Guide",
                                 destinationName: toggleDestination.name,

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { addExperienceToBooking, cancelBookingByUser, checkAvailability, createBooking, deleteBooking, getAllBookings, getBookings, getBookingsByTourId, getGuideBookings, respondToBookingByGuide, updateBookingStatus } from "../../controllers/booking/bookingController.js";
+import {cancelBookingByUser, checkAvailability, createBooking, deleteBooking, getAllBookings, getBookings, getBookingsByTourId, getGuideBookings, respondToBookingByGuide, updateBookingStatus } from "../../controllers/booking/bookingController.js";
 import userAuthCheck from "../../middlewares/userAuthCheck.js";
 
 const bookingRoute = Router();
