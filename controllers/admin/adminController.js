@@ -737,3 +737,33 @@ export const getAllDestinationsAdmin = async (req, res, next) => {
     next(err);
   }
 };
+
+
+// view single destination (admin only)
+export const getDestinationByIdAdmin = async (req, res, next) => {
+  try {
+    const id = req.params.id;
+    const { user_role: tokenRole } = req.user_data;
+
+    let destination; 
+
+    if (tokenRole === "admin") {
+      destination = await Destination.findOne({ is_deleted: false, _id: id });
+    } else {
+      return next(new HttpError("You are not authorized", 403));
+    }
+
+    if (!destination) {
+      return next(new HttpError("Destination not found", 404));
+    }
+
+    res.status(200).json({
+      status: true,
+      message: null,
+      data: destination,
+    });
+  } catch (err) {
+    console.error("error from view ", err);
+    return next(new HttpError("Oops! Something went wrong", 500));
+  }
+};

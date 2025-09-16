@@ -291,7 +291,7 @@ export const deleteDestination = async (req,res,next) => {
 }
 
 
-// view single destination
+// view single destination - public
 export const getDestinationById = async (req, res,next) => {
     try{
         const id = req.params.id
@@ -300,6 +300,7 @@ export const getDestinationById = async (req, res,next) => {
         
         if(!destination){
             return next(new HttpError('Destination not found',404))
+            
         }else{
             res.status(200).json({
                 status:true,
