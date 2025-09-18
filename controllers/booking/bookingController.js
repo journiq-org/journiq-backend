@@ -327,10 +327,8 @@ export const updateBookingStatus = async (req, res, next) => {
 // GET /api/bookings/for-guide
 export const getGuideBookings = async (req, res, next) => {
   try {
-    let total=0
     const { user_id, user_role } = req.user_data;
-    const limit = parseInt(req.query.limit) || 10
-    const skip = parseInt(req.query.skip) || 0 
+     
 
     if (!["guide", "admin"].includes(user_role)) {
       return next(new HttpError("Unauthorized access", 403));
@@ -343,30 +341,71 @@ export const getGuideBookings = async (req, res, next) => {
         match: { guide: user_id }, // only tours created by this guide
       })
       .populate("user", "name email")
-      .skip(skip)
-      .limit(limit)
-
-      total = await Booking.countDocuments({ isDeleted: false })
-      .populate("tour")
-      .where("tour.guide").equals(user_id);
-
-
-
+      .sort({ createdAt: -1 })
+      
     // Remove bookings where the tour didn't match (null after populate)
     const filteredBookings = bookings.filter(b => b.tour);
-    total = await Booking.countDocuments({isDeleted:false})
+    // total = await Booking.countDocuments({isDeleted:false})
 
     if (filteredBookings.length === 0) {
       return res.status(404).json({ message: "No bookings found" });
     }
 
-    res.status(200).json({ bookings: filteredBookings ,total:total});
+    res.status(200).json({ bookings: filteredBookings ,
+      // total:total
+    });
 
   } catch (err) {
     next(err);
   }
 };
 
+// GET /api/bookings/for-guide
+// export const getGuideBookings = async (req, res, next) => {
+//   try {
+//     const { user_id, user_role } = req.user_data;
+//     const limit = parseInt(req.query.limit) || 10;
+//     const skip = parseInt(req.query.skip) || 0;
+
+//     if (!["guide", "admin"].includes(user_role)) {
+//       return next(new HttpError("Unauthorized access", 403));
+//     }
+
+//     // First, get all tours created by this guide
+//     const guideTours = await Tour.find({ guide: user_id, isDeleted: false });
+
+//     if (guideTours.length === 0) {
+//       return res.status(404).json({ message: "No tours found for this guide" });
+//     }
+
+//     // Get tour IDs for this guide
+//     const guideTourIds = guideTours.map(tour => tour._id);
+
+//     // Fetch bookings for tours created by this guide
+//     const bookings = await Booking.find({ 
+//       isDeleted: false,
+//       tour: { $in: guideTourIds }
+//     })
+//       .populate("tour")
+//       .populate("user", "name email")
+//       .skip(skip)
+//       .limit(limit);
+
+//     // Count total bookings for this guide's tours
+//     const total = await Booking.countDocuments({ 
+//       isDeleted: false,
+//       tour: { $in: guideTourIds }
+//     });
+
+//     if (bookings.length === 0) {
+//       return res.status(404).json({ message: "No bookings found" });
+//     }
+
+//     res.status(200).json({ bookings, total });
+//   } catch (err) {
+//     next(err);
+//   }
+// };
 
 // Cancel Booking by Traveller
 export const cancelBookingByUser = async (req, res, next) => {

@@ -35,10 +35,16 @@ export const registerUser = async (req, res, next) => {
           ? inputRole.toLowerCase()
           : "traveller";
     
-        // Check if user already exists
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-          return next(new HttpError("Email already in use", 400));
+         // Check if email or phone already exists
+        const existingEmail = await User.findOne({ email });
+        const existingPhone = await User.findOne({ phone });
+
+        const fieldErrors = {};
+        if (existingEmail) fieldErrors.email = "Email already in use";
+        if (existingPhone) fieldErrors.phone = "Phone number already in use";
+
+        if (Object.keys(fieldErrors).length > 0) {
+          return res.status(400).json({ status: false, errors: fieldErrors });
         }
     
         // Hash the password
@@ -86,9 +92,10 @@ export const registerUser = async (req, res, next) => {
 
 
   } catch (error) {
-    console.error("Register Error:", error.message || error);
-    return next(new HttpError("Registration Failed", 500));
-  }
+  console.error("Register Error:", error); // keep full error for logs
+  return next(new HttpError(error.message || "Registration Failed", error.statusCode || 500));
+}
+
 };
 
 // Login

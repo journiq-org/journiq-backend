@@ -51,8 +51,14 @@ app.use("/api/messages", messageRoutes);
 
 
 app.use((error, req, res, next) => {
+  console.error('Global error handler:', error);
   res.status(error.code || 500).json({
+    status: false,
     message: error.message || "An unknown error occurred",
+    error: process.env.NODE_ENV === 'development' ? {
+      name: error.name,
+      stack: error.stack
+    } : undefined
   });
 });
 
