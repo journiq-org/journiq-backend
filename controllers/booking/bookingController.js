@@ -346,6 +346,12 @@ export const getGuideBookings = async (req, res, next) => {
       .skip(skip)
       .limit(limit)
 
+      total = await Booking.countDocuments({ isDeleted: false })
+      .populate("tour")
+      .where("tour.guide").equals(user_id);
+
+
+
     // Remove bookings where the tour didn't match (null after populate)
     const filteredBookings = bookings.filter(b => b.tour);
     total = await Booking.countDocuments({isDeleted:false})
@@ -360,7 +366,6 @@ export const getGuideBookings = async (req, res, next) => {
     next(err);
   }
 };
-
 
 
 // Cancel Booking by Traveller
