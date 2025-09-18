@@ -153,31 +153,66 @@ export const createBooking = async (req, res, next) => {
 };
 
 // Get Booking by Id
+// export const getBookings = async (req, res, next) => {
+//     try {
+//         const {user_id:travellerId, user_role: tokenRole} = req.user_data;
+
+//         if(tokenRole !== 'traveller') {
+//             return next(new HttpError("Only traveller can access their bookings", 403));
+//             }else{
+//             // const bookings = await Booking.find({user: travellerId,isDeleted:false}).populate("tour");
+
+//             // bookingController.js
+//             const bookings = await Booking.find({ user: req.user_data.user_id })
+//               .populate("tour")
+//               .populate("review"); 
+
+
+
+//             if(!bookings || bookings.length === 0) {
+//                 return res.status(404).json({ message: "No bookings found" });
+//             }
+//             res.status(200).json({ bookings });
+//         }
+//         } catch (error) {
+//                 next(error);
+//         }
+// }
 export const getBookings = async (req, res, next) => {
-    try {
-        const {user_id:travellerId, user_role: tokenRole} = req.user_data;
+  try {
+    const { user_id: travellerId, user_role: tokenRole } = req.user_data;
 
-        if(tokenRole !== 'traveller') {
-            return next(new HttpError("Only traveller can access their bookings", 403));
-            }else{
-            // const bookings = await Booking.find({user: travellerId,isDeleted:false}).populate("tour");
+    if (tokenRole !== "traveller") {
+      return next(new HttpError("Only traveller can access their bookings", 403));
+    }
 
-            // bookingController.js
-            const bookings = await Booking.find({ user: req.user_data.user_id })
-              .populate("tour")
-              .populate("review"); 
+    // Pagination
+    // const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 6;
+    const skip = parseInt(req.query.skip)
 
+    const bookings = await Booking.find({ user: travellerId })
+    .populate("tour")
+    .populate("review")
+    .skip(skip)
+    .limit(limit)
+    .sort({ createdAt: -1 });
+    
+    const total = await Booking.countDocuments({ user: travellerId });
 
+    if (!bookings || bookings.length === 0) {
+      return res.status(404).json({ message: "No bookings found" });
+    }
 
-            if(!bookings || bookings.length === 0) {
-                return res.status(404).json({ message: "No bookings found" });
-            }
-            res.status(200).json({ bookings });
-        }
-        } catch (error) {
-                next(error);
-        }
-}
+    res.status(200).json({
+      bookings,
+      total,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
     
 // Update Booking Status
 export const updateBookingStatus = async (req, res, next) => {
@@ -292,7 +327,10 @@ export const updateBookingStatus = async (req, res, next) => {
 // GET /api/bookings/for-guide
 export const getGuideBookings = async (req, res, next) => {
   try {
+    let total=0
     const { user_id, user_role } = req.user_data;
+    const limit = parseInt(req.query.limit) || 10
+    const skip = parseInt(req.query.skip) || 0 
 
     if (!["guide", "admin"].includes(user_role)) {
       return next(new HttpError("Unauthorized access", 403));
@@ -304,16 +342,20 @@ export const getGuideBookings = async (req, res, next) => {
         path: "tour",
         match: { guide: user_id }, // only tours created by this guide
       })
-      .populate("user", "name email");
+      .populate("user", "name email")
+      .skip(skip)
+      .limit(limit)
 
     // Remove bookings where the tour didn't match (null after populate)
     const filteredBookings = bookings.filter(b => b.tour);
+    total = await Booking.countDocuments({isDeleted:false})
 
     if (filteredBookings.length === 0) {
       return res.status(404).json({ message: "No bookings found" });
     }
 
-    res.status(200).json({ bookings: filteredBookings });
+    res.status(200).json({ bookings: filteredBookings ,total:total});
+
   } catch (err) {
     next(err);
   }
