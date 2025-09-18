@@ -87,14 +87,7 @@ export const markAsRead = async (req, res, next) => {
 export const markAllAsRead = async (req, res, next) => {
   try {
     const { user_id } = req.user_data;
-
-      // await Notification.updateMany(
-      //   { recipient: user_id, isRead: false },
-      //   { isRead: true }
-      // );
-
     await Notification.updateMany({ recipient: user_id }, { isRead: true });
-
 
     res.status(200).json({
          status: true, 
