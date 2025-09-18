@@ -10,7 +10,6 @@ import Destination from "../../models/Destination.js"
 import transporter from "../../config/email.js"
 import Booking from "../../models/Booking.js"
 import Notification from "../../models/Notification.js"
-// import { sendNotification } from "../../services/notificationService.js"
 
 
 //create tour
@@ -818,41 +817,91 @@ export const getAllTour = async (req, res, next) => {
 
 
 //getToursByGuide route (for travellers visiting a guide’s profile)
+// getToursByGuide route (for travellers visiting a guide’s profile)
 export const getPublicToursByGuide = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const { page = 1, limit = 6 } = req.query;
+    const skip = (page - 1) * limit;
 
-    // Check if guide exists & is not blocked
     const guideUser = await User.findById(id);
-
     if (!guideUser || guideUser.isBlocked) {
       return next(new HttpError("Guide not found or unavailable", 404));
-    } else {
+    }
 
-// optional: only show tours with upcoming availability (improves UX)
-      const today = new Date();
+    const today = new Date();
 
-      const tours = await Tour.find({
+    const [tours, total] = await Promise.all([
+      Tour.find({
         guide: id,
         is_deleted: false,
         isBlocked: false,
         isActive: true,
         availability: { $elemMatch: { date: { $gte: today }, slots: { $gt: 0 } } }
       })
-      .populate("destination", "name")
-      .populate("guide", "name");
+        .populate("destination", "name")
+        .populate("guide", "name")
+        .skip(skip)
+        .limit(Number(limit)),
 
-      res.status(200).json({
-        status: true,
-        count: tours.length,
-        data: tours
-      });
-    }
+      Tour.countDocuments({
+        guide: id,
+        is_deleted: false,
+        isBlocked: false,
+        isActive: true,
+        availability: { $elemMatch: { date: { $gte: today }, slots: { $gt: 0 } } }
+      }),
+    ]);
+
+    res.status(200).json({
+      status: true,
+      count: tours.length,
+      total,
+      page: Number(page),
+      totalPages: Math.ceil(total / limit),
+      data: tours,
+    });
   } catch (err) {
     console.error("Error fetching public tours by guide:", err);
     return next(new HttpError("Oops! Something went wrong", 500));
   }
 };
+
+// export const getPublicToursByGuide = async (req, res, next) => {
+//   try {
+//     const { id } = req.params;
+
+//     // Check if guide exists & is not blocked
+//     const guideUser = await User.findById(id);
+
+//     if (!guideUser || guideUser.isBlocked) {
+//       return next(new HttpError("Guide not found or unavailable", 404));
+//     } else {
+
+// // optional: only show tours with upcoming availability (improves UX)
+//       const today = new Date();
+
+//       const tours = await Tour.find({
+//         guide: id,
+//         is_deleted: false,
+//         isBlocked: false,
+//         isActive: true,
+//         availability: { $elemMatch: { date: { $gte: today }, slots: { $gt: 0 } } }
+//       })
+//       .populate("destination", "name")
+//       .populate("guide", "name");
+
+//       res.status(200).json({
+//         status: true,
+//         count: tours.length,
+//         data: tours
+//       });
+//     }
+//   } catch (err) {
+//     console.error("Error fetching public tours by guide:", err);
+//     return next(new HttpError("Oops! Something went wrong", 500));
+//   }
+// };
 
 //get all tours by destination - done this function destination controller
 // export const getAllTourByDestination = async (req, res, next) => {
