@@ -16,7 +16,6 @@ import Notification from "../../models/Notification.js"
 //create tour
 export const createTour = async (req,res,next) => {
     try{
-        console.log("Incoming tour create:", req.body, req.files);
 
 
         const errors = validationResult(req)
@@ -101,138 +100,144 @@ export const createTour = async (req,res,next) => {
 
             const imagePaths = req.files ? req.files.map(file => file.path) : []
 
-            const{user_id:guideId, user_role:tokenRole} = req.user_data
+            const{user_id:guideId, user_role:tokenRole, isVerified} = req.user_data
 
             if(tokenRole !== "guide"){
                 return next(new HttpError("You are not authorized to create a tour",403))
             }
-            else{
-                const guide = await User.findById(guideId);
-                if(!guide || !guide.isVerified){
-                     return next(new HttpError("Your guide profile is not verified yet", 403))
+            
+
+                if(!isVerified){
+                    return next(new HttpError("Your guide profile is not verified yet. Please wait for admin approval.",403))
                 }else{
 
-                    const newTour = await new Tour({
-                        title:title,
-                        description:description,
-                        itinerary:itinerary,
-                        duration:duration,
-                        highlights:highlights,
-                        price:price,
-                        availability:availability,
-                        included:included,
-                        excluded:excluded,
-                        meetingPoint:meetingPoint,
-                        category:category,
-                        rating:rating,
-                        destination:destination,
-                        images:imagePaths,
-                        guide:guideId
-                    }).save()
-    
-                    if(!newTour){
-                        return next(new HttpError("Failed to create tour",400))
+                    const guide = await User.findById(guideId);
+                    if(!guide){
+                         return next(new HttpError("Your guide profile is not verified yet", 403))
                     }else{
-
-                        
-                        
-                        // Populate destination name before sending email
-                        const populatedTour = await newTour.populate("destination", "name");
-
-                        // 📩 Send email to Admin
-                        const admin = await User.findOne({ role: "admin" }).select("email name");
-                        if (admin) {
-
-                            // 🔔 In-app notification
-                            await Notification.create({
-                                recipient: admin._id,
-                                sender: guideId,
-                                type: "tour_updated",
-                                message: `A new tour "${title}" has been created by ${guide.name}.`,
-                                link: `/admin/tours/${newTour._id}`,
-                                relatedTour: newTour._id,
+    
+                        const newTour = await new Tour({
+                            title:title,
+                            description:description,
+                            itinerary:itinerary,
+                            duration:duration,
+                            highlights:highlights,
+                            price:price,
+                            availability:availability,
+                            included:included,
+                            excluded:excluded,
+                            meetingPoint:meetingPoint,
+                            category:category,
+                            rating:rating,
+                            destination:destination,
+                            images:imagePaths,
+                            guide:guideId
+                        }).save()
+        
+                        if(!newTour){
+                            return next(new HttpError("Failed to create tour",400))
+                        }else{
+    
+                            
+                            
+                            // Populate destination name before sending email
+                            const populatedTour = await newTour.populate("destination", "name");
+    
+                            // 📩 Send email to Admin
+                            const admin = await User.findOne({ role: "admin" }).select("email name");
+                            if (admin) {
+    
+                                // 🔔 In-app notification
+                                await Notification.create({
+                                    recipient: admin._id,
+                                    sender: guideId,
+                                    type: "tour_updated",
+                                    message: `A new tour "${title}" has been created by ${guide.name}.`,
+                                    link: `/admin/tours/${newTour._id}`,
+                                    relatedTour: newTour._id,
+                                });
+    
+                                
+                            const mailOptions = {
+                                from: process.env.EMAIL_USER,
+                                to: admin.email,
+                                subject: `New Tour Added on Journiq: ${title}`,
+                                template: "newTourAlert",
+                                context: {
+                                name: admin.name,
+                                guideName: guide.name,
+                                title,
+                                destination: populatedTour.destination.name,
+                                category,
+                                price,
+                                link: `https://yourfrontend.com/tour/${newTour._id}`,
+                                },
+                                
+                            };
+    
+                            transporter.sendMail(mailOptions, (error, info) => {
+                                if (error) {
+                                console.error(`Failed to send admin notification:`, error);
+                                } else {
+                                console.log(`Admin notified: ${info.response}`);
+                                }
                             });
-
-                            
-                        const mailOptions = {
-                            from: process.env.EMAIL_USER,
-                            to: admin.email,
-                            subject: `New Tour Added on Journiq: ${title}`,
-                            template: "newTourAlert",
-                            context: {
-                            name: admin.name,
-                            guideName: guide.name,
-                            title,
-                            destination: populatedTour.destination.name,
-                            category,
-                            price,
-                            link: `https://yourfrontend.com/tour/${newTour._id}`,
-                            },
-                            
-                        };
-
-                        transporter.sendMail(mailOptions, (error, info) => {
-                            if (error) {
-                            console.error(`Failed to send admin notification:`, error);
-                            } else {
-                            console.log(`Admin notified: ${info.response}`);
                             }
-                        });
+                            //  // 🔔 Notify admin about new tour
+                            // const adminUser = await User.findOne({ role: "admin" });
+                            // if (adminUser) {
+                            // await sendNotification({
+                            //     recipientId: adminUser._id,
+                            //     senderId: guideId,
+                            //     type: "tour_updated",
+                            //     message: `A new tour "${title}" has been created by guide ${guide.name}.`,
+                            //     link: `https://yourapp.com/tours/${newTour._id}`,
+                            //     relatedTour: newTour._id,
+                            //     emailData: {
+                            //     to: adminUser.email,
+                            //     subject: "New Tour Created - Journiq",
+                            //     template: "newTourNotification", // your handlebars template name
+                            //     context: {
+                            //         name: adminUser.name,
+                            //         tourTitle: title,
+                            //         guideName: guide.name,
+                            //         link: `https://yourapp.com/tours/${newTour._id}`
+                            //     }
+                            //     }
+                            // });
+                            // }
+    
+                            
+                            // const adminUser = await User.findOne({ role: "admin" });
+                            // if (adminUser) {
+                            // // 📩 Send notification to admin about new tour
+                            // await sendNotification({
+                            //     recipientId: adminUser._id,
+                            //     senderId: guideId,
+                            //     type: "tour_updated",
+                            //     message: `A new tour "${title}" has been created by a guide.`,
+                            //     link: `https://yourapp.com/tours/${newTour._id}`,
+                            //     relatedTour: newTour._id,
+                            //     emailData: {
+                            //         to: adminUser.email,
+                            //         subject: "New Tour Created - Journiq",
+                            //         recipientName: adminUser.name,
+                            //         message: `A new tour "${title}" has been created. Click below to review it.`,
+                            //         link: `https://yourapp.com/tours/${newTour._id}`
+                            //     }
+                            // });
+                // }
+        
+        
+                            res.status(201).json({
+                                status:true,
+                                message:"Tour created successfully",
+                                data:newTour
+                            })
                         }
-                        //  // 🔔 Notify admin about new tour
-                        // const adminUser = await User.findOne({ role: "admin" });
-                        // if (adminUser) {
-                        // await sendNotification({
-                        //     recipientId: adminUser._id,
-                        //     senderId: guideId,
-                        //     type: "tour_updated",
-                        //     message: `A new tour "${title}" has been created by guide ${guide.name}.`,
-                        //     link: `https://yourapp.com/tours/${newTour._id}`,
-                        //     relatedTour: newTour._id,
-                        //     emailData: {
-                        //     to: adminUser.email,
-                        //     subject: "New Tour Created - Journiq",
-                        //     template: "newTourNotification", // your handlebars template name
-                        //     context: {
-                        //         name: adminUser.name,
-                        //         tourTitle: title,
-                        //         guideName: guide.name,
-                        //         link: `https://yourapp.com/tours/${newTour._id}`
-                        //     }
-                        //     }
-                        // });
-                        // }
-
-                        
-                        // const adminUser = await User.findOne({ role: "admin" });
-                        // if (adminUser) {
-                        // // 📩 Send notification to admin about new tour
-                        // await sendNotification({
-                        //     recipientId: adminUser._id,
-                        //     senderId: guideId,
-                        //     type: "tour_updated",
-                        //     message: `A new tour "${title}" has been created by a guide.`,
-                        //     link: `https://yourapp.com/tours/${newTour._id}`,
-                        //     relatedTour: newTour._id,
-                        //     emailData: {
-                        //         to: adminUser.email,
-                        //         subject: "New Tour Created - Journiq",
-                        //         recipientName: adminUser.name,
-                        //         message: `A new tour "${title}" has been created. Click below to review it.`,
-                        //         link: `https://yourapp.com/tours/${newTour._id}`
-                        //     }
-                        // });
-            // }
-    
-    
-                        res.status(201).json({
-                            status:true,
-                            message:"Tour created successfully",
-                            data:newTour
-                        })
                     }
                 }
-            }
+            
         }
     }
     catch(err){

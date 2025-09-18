@@ -170,6 +170,7 @@ check("availability")
 
 
 tourRoute.get('/viewAll',getAllTour)
+
 // tourRoute.get('/allTourByDestination/:id',getAllTourByDestination)
 tourRoute.get('/guide/:id',getPublicToursByGuide)
 tourRoute.get('/viewtour/:id', viewTour)
