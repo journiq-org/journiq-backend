@@ -99,19 +99,19 @@ export const createTour = async (req,res,next) => {
 
             const imagePaths = req.files ? req.files.map(file => file.path) : []
 
-            const{user_id:guideId, user_role:tokenRole, isVerified} = req.user_data
+            const{user_id:guideId, user_role:tokenRole} = req.user_data
 
             if(tokenRole !== "guide"){
                 return next(new HttpError("You are not authorized to create a tour",403))
             }
             
 
-                if(!isVerified){
-                    return next(new HttpError("Your guide profile is not verified yet. Please wait for admin approval.",403))
-                }else{
+                // if(!isVerified){
+                //     return next(new HttpError("Your guide profile is not verified yet. Please wait for admin approval.",403))
+                else{
 
                     const guide = await User.findById(guideId);
-                    if(!guide){
+                    if(!guide || !guide.isVerified){
                          return next(new HttpError("Your guide profile is not verified yet", 403))
                     }else{
     
