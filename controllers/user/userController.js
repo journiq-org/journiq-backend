@@ -115,6 +115,10 @@ export const userLogin = async (req, res, next) => {
       return next(new HttpError("Invalid credentials", 401));
     }
 
+     if (user.isDeleted) {
+      return next(new HttpError("Your account has been deleted. Please contact support.", 403));
+    }
+    
     // incase of blocked user
     if (user.isBlocked) {
       return next(new HttpError("Your account has been blocked. Please contact support.", 403));
