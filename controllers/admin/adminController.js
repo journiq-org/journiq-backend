@@ -7,7 +7,6 @@ import User from '../../models/User.js'
 import Notification from '../../models/Notification.js'
 import Destination from '../../models/Destination.js'
 
-
 //USER MANAGEMENT
 
 //view all users
@@ -534,6 +533,7 @@ export const getBookingsByTour = async (req,res,next) => {
 
          const {user_role: tokenRole} = req.user_data
 
+
          if(tokenRole !== 'admin'){
             return next(new HttpError('You are not authorized to perform this action',403))
          }else{
@@ -722,7 +722,6 @@ export const getAllDestinationsAdmin = async (req, res, next) => {
 
     let total = 0
     const {user_role : tokenRole} = req.user_data
-
     const limit = (req.query.limit) || 10
     const skip = (req.query.skip) || 0
 
